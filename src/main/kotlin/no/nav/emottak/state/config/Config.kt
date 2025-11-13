@@ -17,11 +17,12 @@ data class Database(
     val maxConnectionPoolSize: MaxConnectionPoolSize,
     val connectionTimeout: ConnectionTimeout,
     val idleConnectionTimeout: IdleConnectionTimeout,
+    val cachePreparedStatements: CachePreparedStatements,
+    val preparedStatementsCacheSize: PreparedStatementsCacheSize,
+    val preparedStatementsCacheSqlLimit: PreparedStatementsCacheSqlLimit,
     val driverClassName: DriverClassName,
-    val mountPath: MountPath,
     val username: UserName,
     val password: Masked,
-    val migrationsPath: MigrationsPath,
     val flyway: Flyway
 ) {
     @JvmInline
@@ -43,13 +44,16 @@ data class Database(
     value class IdleConnectionTimeout(val value: Int)
 
     @JvmInline
+    value class CachePreparedStatements(val value: Boolean)
+
+    @JvmInline
+    value class PreparedStatementsCacheSize(val value: Int)
+
+    @JvmInline
+    value class PreparedStatementsCacheSqlLimit(val value: Int)
+
+    @JvmInline
     value class DriverClassName(val value: String)
-
-    @JvmInline
-    value class MountPath(val value: String)
-
-    @JvmInline
-    value class MigrationsPath(val value: String)
 
     @JvmInline
     value class UserName(val value: String)
@@ -69,4 +73,7 @@ fun Database.toProperties() = Properties()
         put("maximumPoolSize", maxConnectionPoolSize.value)
         put("connectionTimeout", connectionTimeout.value)
         put("idleTimeout", idleConnectionTimeout.value)
+        put("dataSource.cachePrepStmts", cachePreparedStatements.value)
+        put("dataSource.prepStmtCacheSize", preparedStatementsCacheSize.value)
+        put("dataSource.prepStmtCacheSqlLimit", preparedStatementsCacheSqlLimit.value)
     }
