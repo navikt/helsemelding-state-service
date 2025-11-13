@@ -100,5 +100,7 @@ class MessageStateTransactionRepositorySpec : StringSpec(
                 stateChange.changedAt shouldBeInstant now
             }
         }
+
+        afterEach { container.stop() }
     }
 )

@@ -206,5 +206,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                 }
             }
         }
+
+        afterEach { container.stop() }
     }
 )

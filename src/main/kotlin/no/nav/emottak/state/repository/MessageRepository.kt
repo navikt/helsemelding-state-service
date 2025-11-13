@@ -30,7 +30,7 @@ object Messages : Table("messages") {
         .transform(UuidTransformer())
         .uniqueIndex()
 
-    val externalMessageUrl = text("external_message_url").transform(UrlTransformer)
+    val externalMessageUrl = text("external_message_url").transform(UrlTransformer).uniqueIndex()
     val messageType = enumerationByName("message_type", 100, MessageType::class)
     val currentState = enumerationByName("current_state", 100, MessageDeliveryState::class)
     val lastStateChange = timestamp("last_state_change")
