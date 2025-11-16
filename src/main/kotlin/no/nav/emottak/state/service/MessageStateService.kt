@@ -118,8 +118,10 @@ interface MessageStateService {
      *
      * @param externalRefIds A list of external reference id's corresponding to the messages
      *        that have just been polled successfully.
+     *
+     * @return number of messages marked as polled.
      */
-    suspend fun markAsPolled(externalRefIds: List<Uuid>)
+    suspend fun markAsPolled(externalRefIds: List<Uuid>): Int
 }
 
 class TransactionalMessageStateService(
@@ -164,7 +166,5 @@ class TransactionalMessageStateService(
 
     override suspend fun findPollableMessages(): List<MessageState> = messageRepository.findForPolling()
 
-    override suspend fun markAsPolled(externalRefIds: List<Uuid>) {
-        messageRepository
-    }
+    override suspend fun markAsPolled(externalRefIds: List<Uuid>): Int = messageRepository.markPolled(externalRefIds)
 }
