@@ -46,19 +46,19 @@ class MessageRepositorySpec : StringSpec(
                     val repo = ExposedMessageRepository(database)
 
                     val externalRefId = Uuid.random()
-                    val externalUrl = URI.create(MESSAGE1).toURL()
+                    val externalMessageUrl = URI.create(MESSAGE1).toURL()
                     val now = Clock.System.now()
 
-                    val state = repo.create(
+                    val state = repo.createState(
                         messageType = DIALOG,
                         externalRefId = externalRefId,
-                        externalMessageUrl = externalUrl,
+                        externalMessageUrl = externalMessageUrl,
                         lastStateChange = now
                     )
 
                     state.messageType shouldBe DIALOG
                     state.externalRefId shouldBe externalRefId
-                    state.externalMessageUrl shouldBe externalUrl
+                    state.externalMessageUrl shouldBe externalMessageUrl
                     state.lastStateChange shouldBeInstant now
 
                     state.externalDeliveryState shouldBe null
@@ -72,21 +72,21 @@ class MessageRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val repo = ExposedMessageRepository(database)
+                    val messageRepository = ExposedMessageRepository(database)
 
                     val externalRefId = Uuid.random()
-                    val externalUrl = URI.create(MESSAGE1).toURL()
+                    val externalMessageUrl = URI.create(MESSAGE1).toURL()
 
-                    repo.create(
+                    messageRepository.createState(
                         messageType = DIALOG,
                         externalRefId = externalRefId,
-                        externalMessageUrl = externalUrl,
+                        externalMessageUrl = externalMessageUrl,
                         lastStateChange = Clock.System.now()
                     )
 
                     val updatedAt = Clock.System.now()
 
-                    val newState = repo.updateState(
+                    val newState = messageRepository.updateState(
                         externalRefId = externalRefId,
                         externalDeliveryState = Acknowledged,
                         appRecStatus = null,
@@ -103,10 +103,10 @@ class MessageRepositorySpec : StringSpec(
         "Find or null - no value found" {
             resourceScope {
                 val database = database(container.jdbcUrl)
-                val repo = ExposedMessageRepository(database)
+                val messageRepository = ExposedMessageRepository(database)
 
-                val ref = Uuid.random()
-                repo.findOrNull(ref) shouldBe null
+                val externalRefId = Uuid.random()
+                messageRepository.findOrNull(externalRefId) shouldBe null
             }
         }
 
@@ -115,19 +115,19 @@ class MessageRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val repo = ExposedMessageRepository(database)
+                    val messageRepository = ExposedMessageRepository(database)
 
-                    val ref = Uuid.random()
-                    val url = URI.create(MESSAGE1).toURL()
+                    val externalRefId = Uuid.random()
+                    val externalMessageUrl = URI.create(MESSAGE1).toURL()
 
-                    repo.create(
+                    messageRepository.createState(
                         messageType = DIALOG,
-                        externalRefId = ref,
-                        externalMessageUrl = url,
+                        externalRefId = externalRefId,
+                        externalMessageUrl = externalMessageUrl,
                         lastStateChange = Clock.System.now()
                     )
 
-                    repo.findOrNull(ref)!!.externalRefId shouldBe ref
+                    messageRepository.findOrNull(externalRefId)!!.externalRefId shouldBe externalRefId
                 }
             }
         }
@@ -148,20 +148,20 @@ class MessageRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val repo = ExposedMessageRepository(database)
-                    repo.findForPolling() shouldBe emptyList()
+                    val messageRepository = ExposedMessageRepository(database)
+                    messageRepository.findForPolling() shouldBe emptyList()
                 }
             }
         }
 
-        "Find for polling - only messages with externalDeliveryState = NULL" {
+        "Find for polling - only messages with external delivery state not set" {
             resourceScope {
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
                     val messageRepository = ExposedMessageRepository(database)
 
-                    messageRepository.create(
+                    messageRepository.createState(
                         DIALOG,
                         Uuid.random(),
                         URI.create(MESSAGE1).toURL(),
@@ -173,7 +173,7 @@ class MessageRepositorySpec : StringSpec(
                             }
                         }
 
-                    messageRepository.create(
+                    messageRepository.createState(
                         DIALOG,
                         Uuid.random(),
                         URI.create(MESSAGE2).toURL(),
@@ -193,28 +193,28 @@ class MessageRepositorySpec : StringSpec(
                     val messageRepository = ExposedMessageRepository(database)
                     val now = Clock.System.now()
 
-                    val oldRef = Uuid.random()
-                    val ngRef = Uuid.random()
+                    val oldExternalRefId = Uuid.random()
+                    val newExternalRefId = Uuid.random()
 
-                    messageRepository.create(DIALOG, oldRef, URI.create(MESSAGE1).toURL(), now)
-                    messageRepository.create(DIALOG, ngRef, URI.create(MESSAGE2).toURL(), now)
+                    messageRepository.createState(DIALOG, oldExternalRefId, URI.create(MESSAGE1).toURL(), now)
+                    messageRepository.createState(DIALOG, newExternalRefId, URI.create(MESSAGE2).toURL(), now)
 
-                    Messages.update({ externalRefId eq oldRef }) {
+                    Messages.update({ externalRefId eq oldExternalRefId }) {
                         it[lastPolledAt] = now - Duration.parse("31s")
                     }
 
-                    Messages.update({ externalRefId eq ngRef }) {
+                    Messages.update({ externalRefId eq newExternalRefId }) {
                         it[lastPolledAt] = now - Duration.parse("5s")
                     }
 
-                    val pollingRefs = messageRepository.findForPolling().map { it.externalRefId }
-                    pollingRefs shouldContain oldRef
-                    pollingRefs shouldNotContain ngRef
+                    val pollingExternalRefIds = messageRepository.findForPolling().map { it.externalRefId }
+                    pollingExternalRefIds shouldContain oldExternalRefId
+                    pollingExternalRefIds shouldNotContain newExternalRefId
                 }
             }
         }
 
-        "Find for polling - null lastPolledAt messages are included" {
+        "Find for polling - null last polled at messages are included" {
             resourceScope {
                 val database = database(container.jdbcUrl)
 
@@ -225,42 +225,42 @@ class MessageRepositorySpec : StringSpec(
                     val never = Uuid.random()
                     val recent = Uuid.random()
 
-                    messageRepository.create(DIALOG, never, URI.create(MESSAGE1).toURL(), now)
-                    messageRepository.create(DIALOG, recent, URI.create(MESSAGE2).toURL(), now)
+                    messageRepository.createState(DIALOG, never, URI.create(MESSAGE1).toURL(), now)
+                    messageRepository.createState(DIALOG, recent, URI.create(MESSAGE2).toURL(), now)
 
                     Messages.update({ externalRefId eq recent }) {
                         it[lastPolledAt] = now
                     }
 
-                    val refs = messageRepository.findForPolling().map { it.externalRefId }
-                    refs shouldContain never
-                    refs shouldNotContain recent
+                    val externalRefIds = messageRepository.findForPolling().map { it.externalRefId }
+                    externalRefIds shouldContain never
+                    externalRefIds shouldNotContain recent
                 }
             }
         }
 
-        "Mark Polled - updates only selected IDs" {
+        "Mark Polled - updates only selected id's" {
             resourceScope {
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
                     val messageRepository = ExposedMessageRepository(database)
 
-                    val ref1 = Uuid.random()
-                    val ref2 = Uuid.random()
-                    val ref3 = Uuid.random()
+                    val externalRefId1 = Uuid.random()
+                    val externalRefId2 = Uuid.random()
+                    val externalRefId3 = Uuid.random()
                     val now = Clock.System.now()
 
-                    messageRepository.create(DIALOG, ref1, URI.create(MESSAGE1).toURL(), now)
-                    messageRepository.create(DIALOG, ref2, URI.create(MESSAGE2).toURL(), now)
-                    messageRepository.create(DIALOG, ref3, URI.create(MESSAGE3).toURL(), now)
+                    messageRepository.createState(DIALOG, externalRefId1, URI.create(MESSAGE1).toURL(), now)
+                    messageRepository.createState(DIALOG, externalRefId2, URI.create(MESSAGE2).toURL(), now)
+                    messageRepository.createState(DIALOG, externalRefId3, URI.create(MESSAGE3).toURL(), now)
 
-                    messageRepository.markPolled(listOf(ref1, ref2)) shouldBe 2
+                    messageRepository.markPolled(listOf(externalRefId1, externalRefId2)) shouldBe 2
 
-                    messageRepository.findOrNull(ref1)!!.lastPolledAt shouldNotBe null
-                    messageRepository.findOrNull(ref2)!!.lastPolledAt shouldNotBe null
+                    messageRepository.findOrNull(externalRefId1)!!.lastPolledAt shouldNotBe null
+                    messageRepository.findOrNull(externalRefId2)!!.lastPolledAt shouldNotBe null
 
-                    messageRepository.findOrNull(ref3)!!.lastPolledAt shouldBe null
+                    messageRepository.findOrNull(externalRefId3)!!.lastPolledAt shouldBe null
                 }
             }
         }

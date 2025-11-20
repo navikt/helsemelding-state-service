@@ -57,7 +57,7 @@ object Messages : Table("messages") {
 }
 
 interface MessageRepository {
-    suspend fun create(
+    suspend fun createState(
         messageType: MessageType,
         externalRefId: Uuid,
         externalMessageUrl: URL,
@@ -81,7 +81,7 @@ interface MessageRepository {
 class ExposedMessageRepository(private val database: Database) : MessageRepository {
     private val poller = config().poller
 
-    override suspend fun create(
+    override suspend fun createState(
         messageType: MessageType,
         externalRefId: Uuid,
         externalMessageUrl: URL,
@@ -159,7 +159,7 @@ class ExposedMessageRepository(private val database: Database) : MessageReposito
 class FakeMessageRepository : MessageRepository {
     private val messages = HashMap<Uuid, MessageState>()
 
-    override suspend fun create(
+    override suspend fun createState(
         messageType: MessageType,
         externalRefId: Uuid,
         externalMessageUrl: URL,

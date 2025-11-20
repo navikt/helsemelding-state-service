@@ -41,7 +41,7 @@ class ExposedMessageStateTransactionRepository(
         externalMessageUrl: URL,
         occurredAt: Instant
     ): MessageStateSnapshot = suspendTransaction(database) {
-        val messageState = messageRepository.create(
+        val messageState = messageRepository.createState(
             messageType = messageType,
             externalRefId = externalRefId,
             externalMessageUrl = externalMessageUrl,
@@ -100,14 +100,14 @@ class FakeMessageStateTransactionRepository(
         externalMessageUrl: URL,
         occurredAt: Instant
     ): MessageStateSnapshot {
-        val state = messageRepository.create(
+        val messageState = messageRepository.createState(
             messageType = messageType,
             externalRefId = externalRefId,
             externalMessageUrl = externalMessageUrl,
             lastStateChange = occurredAt
         )
 
-        val history = historyRepository.append(
+        val historyEntries = historyRepository.append(
             messageId = externalRefId,
             oldDeliveryState = null,
             newDeliveryState = null,
@@ -116,7 +116,7 @@ class FakeMessageStateTransactionRepository(
             changedAt = occurredAt
         )
 
-        return MessageStateSnapshot(state, history)
+        return MessageStateSnapshot(messageState, historyEntries)
     }
 
     override suspend fun recordStateChange(
@@ -128,14 +128,14 @@ class FakeMessageStateTransactionRepository(
         newAppRecStatus: AppRecStatus?,
         occurredAt: Instant
     ): MessageStateSnapshot {
-        val state = messageRepository.updateState(
+        val updatedState = messageRepository.updateState(
             externalRefId = externalRefId,
             externalDeliveryState = newDeliveryState,
             appRecStatus = newAppRecStatus,
             lastStateChange = occurredAt
         )
 
-        val history = historyRepository.append(
+        val historyEntries = historyRepository.append(
             messageId = externalRefId,
             oldDeliveryState = oldDeliveryState,
             newDeliveryState = newDeliveryState,
@@ -144,6 +144,6 @@ class FakeMessageStateTransactionRepository(
             changedAt = occurredAt
         )
 
-        return MessageStateSnapshot(state, history)
+        return MessageStateSnapshot(updatedState, historyEntries)
     }
 }

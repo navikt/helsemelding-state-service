@@ -37,10 +37,10 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val repo = ExposedMessageStateHistoryRepository(database)
+                    val messageStateHistoryRepository = ExposedMessageStateHistoryRepository(database)
 
                     val exception = shouldThrow<ExposedSQLException> {
-                        repo.append(
+                        messageStateHistoryRepository.append(
                             messageId = Uuid.random(),
                             oldDeliveryState = null,
                             newDeliveryState = Acknowledged,
@@ -61,22 +61,22 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val messageRepo = ExposedMessageRepository(database)
-                    val historyRepo = ExposedMessageStateHistoryRepository(database)
+                    val messageRepository = ExposedMessageRepository(database)
+                    val messageStateHistoryRepository = ExposedMessageStateHistoryRepository(database)
 
-                    val refId = Uuid.random()
-                    val url = URI.create(MESSAGE).toURL()
+                    val externalRefId = Uuid.random()
+                    val externalMessageUrl = URI.create(MESSAGE).toURL()
                     val occurredAt = Clock.System.now()
 
-                    messageRepo.create(
+                    messageRepository.createState(
                         messageType = DIALOG,
-                        externalRefId = refId,
-                        externalMessageUrl = url,
+                        externalRefId = externalRefId,
+                        externalMessageUrl = externalMessageUrl,
                         lastStateChange = occurredAt
                     )
 
-                    val history = historyRepo.append(
-                        messageId = refId,
+                    val history = messageStateHistoryRepository.append(
+                        messageId = externalRefId,
                         oldDeliveryState = null,
                         newDeliveryState = Unconfirmed,
                         oldAppRecStatus = null,
@@ -87,7 +87,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                     history.size shouldBe 1
                     val entry = history.first()
 
-                    entry.messageId shouldBe refId
+                    entry.messageId shouldBe externalRefId
                     entry.oldDeliveryState shouldBe null
                     entry.newDeliveryState shouldBe Unconfirmed
                     entry.oldAppRecStatus shouldBe null
@@ -101,17 +101,17 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                 val database = database(container.jdbcUrl)
 
                 suspendTransaction(database) {
-                    val messageRepo = ExposedMessageRepository(database)
-                    val historyRepo = ExposedMessageStateHistoryRepository(database)
+                    val messageRepository = ExposedMessageRepository(database)
+                    val messageStateHistoryRepository = ExposedMessageStateHistoryRepository(database)
 
-                    val refId = Uuid.random()
-                    val url = URI.create(MESSAGE).toURL()
+                    val externalRefId = Uuid.random()
+                    val externalMessageUrl = URI.create(MESSAGE).toURL()
                     val now = Clock.System.now()
 
-                    messageRepo.create(DIALOG, refId, url, now)
+                    messageRepository.createState(DIALOG, externalRefId, externalMessageUrl, now)
 
-                    historyRepo.append(
-                        messageId = refId,
+                    messageStateHistoryRepository.append(
+                        messageId = externalRefId,
                         oldDeliveryState = null,
                         newDeliveryState = Unconfirmed,
                         oldAppRecStatus = null,
@@ -120,8 +120,8 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                     )
 
                     val next = Clock.System.now()
-                    val history = historyRepo.append(
-                        messageId = refId,
+                    val history = messageStateHistoryRepository.append(
+                        messageId = externalRefId,
                         oldDeliveryState = Unconfirmed,
                         newDeliveryState = Acknowledged,
                         oldAppRecStatus = null,
@@ -132,7 +132,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                     history.size shouldBe 2
 
                     val last = history.last()
-                    last.messageId shouldBe refId
+                    last.messageId shouldBe externalRefId
                     last.oldDeliveryState shouldBe Unconfirmed
                     last.newDeliveryState shouldBe Acknowledged
                     last.oldAppRecStatus shouldBe null
@@ -144,9 +144,9 @@ class MessageStateHistoryRepositorySpec : StringSpec(
         "Find all – empty" {
             resourceScope {
                 val database = database(container.jdbcUrl)
-                val historyRepo = ExposedMessageStateHistoryRepository(database)
+                val messageStateHistoryRepository = ExposedMessageStateHistoryRepository(database)
 
-                val list = historyRepo.findAll(Uuid.random())
+                val list = messageStateHistoryRepository.findAll(Uuid.random())
                 list shouldBe emptyList()
             }
         }
@@ -159,14 +159,14 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                     val messageRepository = ExposedMessageRepository(database)
                     val messageStateHistoryRepository = ExposedMessageStateHistoryRepository(database)
 
-                    val refId = Uuid.random()
-                    val url = URI.create(MESSAGE).toURL()
+                    val externalRefId = Uuid.random()
+                    val externalMessageUrl = URI.create(MESSAGE).toURL()
                     val now = Clock.System.now()
 
-                    messageRepository.create(DIALOG, refId, url, now)
+                    messageRepository.createState(DIALOG, externalRefId, externalMessageUrl, now)
 
                     messageStateHistoryRepository.append(
-                        refId,
+                        externalRefId,
                         oldDeliveryState = null,
                         newDeliveryState = Unconfirmed,
                         oldAppRecStatus = null,
@@ -176,7 +176,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
 
                     val t2 = Clock.System.now()
                     messageStateHistoryRepository.append(
-                        refId,
+                        externalRefId,
                         oldDeliveryState = Unconfirmed,
                         newDeliveryState = Acknowledged,
                         oldAppRecStatus = null,
@@ -186,7 +186,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
 
                     val t3 = Clock.System.now()
                     messageStateHistoryRepository.append(
-                        messageId = refId,
+                        messageId = externalRefId,
                         oldDeliveryState = Acknowledged,
                         newDeliveryState = Acknowledged,
                         oldAppRecStatus = null,
@@ -194,7 +194,7 @@ class MessageStateHistoryRepositorySpec : StringSpec(
                         changedAt = t3
                     )
 
-                    messageStateHistoryRepository.findAll(refId).size shouldBe 3
+                    messageStateHistoryRepository.findAll(externalRefId).size shouldBe 3
                 }
             }
         }

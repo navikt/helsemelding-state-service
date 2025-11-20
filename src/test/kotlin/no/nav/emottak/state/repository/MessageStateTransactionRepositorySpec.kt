@@ -29,7 +29,7 @@ class MessageStateTransactionRepositorySpec : StringSpec(
             resourceScope {
                 val database = database(container.jdbcUrl)
 
-                val txRepo = ExposedMessageStateTransactionRepository(
+                val messageStateTransactionRepository = ExposedMessageStateTransactionRepository(
                     database,
                     ExposedMessageRepository(database),
                     ExposedMessageStateHistoryRepository(database)
@@ -39,21 +39,21 @@ class MessageStateTransactionRepositorySpec : StringSpec(
                 val url = URI.create(MESSAGE).toURL()
                 val now = Clock.System.now()
 
-                val snapshot = txRepo.createInitialState(
+                val snapshot = messageStateTransactionRepository.createInitialState(
                     messageType = DIALOG,
                     externalRefId = externalRefId,
                     externalMessageUrl = url,
                     occurredAt = now
                 )
 
-                val msg = snapshot.messageState
+                val messageState = snapshot.messageState
 
-                msg.messageType shouldBe DIALOG
-                msg.externalRefId shouldBe externalRefId
-                msg.externalMessageUrl shouldBe url
+                messageState.messageType shouldBe DIALOG
+                messageState.externalRefId shouldBe externalRefId
+                messageState.externalMessageUrl shouldBe url
 
-                msg.externalDeliveryState shouldBe null
-                msg.appRecStatus shouldBe null
+                messageState.externalDeliveryState shouldBe null
+                messageState.appRecStatus shouldBe null
 
                 snapshot.messageStateChange.size shouldBe 1
                 val entry = snapshot.messageStateChange.first()
@@ -71,24 +71,24 @@ class MessageStateTransactionRepositorySpec : StringSpec(
             resourceScope {
                 val database = database(container.jdbcUrl)
 
-                val txRepo = ExposedMessageStateTransactionRepository(
+                val messageStateTransactionRepository = ExposedMessageStateTransactionRepository(
                     database,
                     ExposedMessageRepository(database),
                     ExposedMessageStateHistoryRepository(database)
                 )
 
                 val externalRefId = Uuid.random()
-                val url = URI.create(MESSAGE).toURL()
+                val externalMessageUrl = URI.create(MESSAGE).toURL()
                 val now = Clock.System.now()
 
-                txRepo.createInitialState(
+                messageStateTransactionRepository.createInitialState(
                     messageType = DIALOG,
                     externalRefId = externalRefId,
-                    externalMessageUrl = url,
+                    externalMessageUrl = externalMessageUrl,
                     occurredAt = now
                 )
 
-                val snapshot = txRepo.recordStateChange(
+                val snapshot = messageStateTransactionRepository.recordStateChange(
                     messageType = DIALOG,
                     externalRefId = externalRefId,
                     oldDeliveryState = null,
