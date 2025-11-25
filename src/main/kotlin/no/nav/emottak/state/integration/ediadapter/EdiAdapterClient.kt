@@ -7,6 +7,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -19,11 +20,14 @@ import no.nav.emottak.state.model.ediadapter.PostAppRecRequest
 import no.nav.emottak.state.model.ediadapter.PostMessageRequest
 import no.nav.emottak.state.model.ediadapter.StatusInfo
 import kotlin.uuid.Uuid
+import org.slf4j.LoggerFactory
 
 class EdiAdapterClient(
     private val ediAdapterUrl: String,
     clientProvider: () -> HttpClient
 ) {
+    val log = LoggerFactory.getLogger("no.nav.emottak.state.integration.ediadapter.EdiAdapterClient")
+
     private var httpClient = clientProvider.invoke()
 
     suspend fun getApprecInfo(id: Uuid): Pair<List<ApprecInfo>?, ErrorMessage?> {
@@ -105,6 +109,7 @@ class EdiAdapterClient(
     }
 
     private suspend inline fun <reified T> handleResponse(httpResponse: HttpResponse): Pair<T?, ErrorMessage?> {
+        log.info("EDI2 test: Response from edi-adapter: ${httpResponse.bodyAsText()}")
         return if (httpResponse.status == HttpStatusCode.OK || httpResponse.status == HttpStatusCode.Created) {
             Pair(httpResponse.body(), null)
         } else {
