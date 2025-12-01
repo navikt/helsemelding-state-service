@@ -9,7 +9,7 @@ import no.nav.emottak.state.model.MessageDeliveryState.COMPLETED
 import no.nav.emottak.state.model.MessageDeliveryState.NEW
 import no.nav.emottak.state.model.MessageDeliveryState.PENDING
 import no.nav.emottak.state.model.MessageDeliveryState.REJECTED
-import no.nav.emottak.state.shouldBeEitherLeftWhere
+import no.nav.emottak.state.shouldBeLeftWhere
 
 class StateTransitionValidatorSpec : StringSpec(
     {
@@ -62,7 +62,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(PENDING, NEW) }
             }
 
-            result shouldBeEitherLeftWhere {
+            result shouldBeLeftWhere {
                 it is IllegalTransition &&
                     it.from == PENDING &&
                     it.to == NEW
@@ -80,7 +80,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(COMPLETED, PENDING) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
 
         "COMPLETED → REJECTED is illegal" {
@@ -88,7 +88,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(COMPLETED, REJECTED) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
 
         "COMPLETED → NEW is illegal" {
@@ -96,7 +96,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(COMPLETED, NEW) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
 
         "REJECTED → REJECTED is allowed" {
@@ -110,7 +110,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(REJECTED, NEW) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
 
         "REJECTED → PENDING is illegal" {
@@ -118,7 +118,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(REJECTED, PENDING) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
 
         "REJECTED → COMPLETED is illegal" {
@@ -126,7 +126,7 @@ class StateTransitionValidatorSpec : StringSpec(
                 with(validator) { validate(REJECTED, COMPLETED) }
             }
 
-            result shouldBeEitherLeftWhere { it is IllegalTransition }
+            result shouldBeLeftWhere { it is IllegalTransition }
         }
     }
 )

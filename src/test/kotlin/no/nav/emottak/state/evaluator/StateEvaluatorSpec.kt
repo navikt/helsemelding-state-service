@@ -13,7 +13,7 @@ import no.nav.emottak.state.model.MessageDeliveryState.COMPLETED
 import no.nav.emottak.state.model.MessageDeliveryState.NEW
 import no.nav.emottak.state.model.MessageDeliveryState.PENDING
 import no.nav.emottak.state.model.MessageDeliveryState.REJECTED
-import no.nav.emottak.state.shouldBeEitherLeftWhere
+import no.nav.emottak.state.shouldBeLeftWhere
 
 class StateEvaluatorSpec : StringSpec(
     {
@@ -66,7 +66,7 @@ class StateEvaluatorSpec : StringSpec(
                 with(evaluator) { evaluate(UNCONFIRMED, AppRecStatus.OK) }
             }
 
-            result shouldBeEitherLeftWhere { it is StateEvaluationError.UnresolvableState }
+            result shouldBeLeftWhere { it is StateEvaluationError.UnresolvableState }
         }
 
         "UNCONFIRMED delivery + REJECTED apprec → Unresolvable" {
@@ -74,7 +74,7 @@ class StateEvaluatorSpec : StringSpec(
                 with(evaluator) { evaluate(UNCONFIRMED, AppRecStatus.REJECTED) }
             }
 
-            result shouldBeEitherLeftWhere { it is StateEvaluationError.UnresolvableState }
+            result shouldBeLeftWhere { it is StateEvaluationError.UnresolvableState }
         }
 
         "null delivery + OK apprec → Unresolvable" {
@@ -82,7 +82,7 @@ class StateEvaluatorSpec : StringSpec(
                 with(evaluator) { evaluate(null, AppRecStatus.OK) }
             }
 
-            result shouldBeEitherLeftWhere { it is StateEvaluationError.UnresolvableState }
+            result shouldBeLeftWhere { it is StateEvaluationError.UnresolvableState }
         }
 
         "null delivery + REJECTED apprec → Unresolvable" {
@@ -90,7 +90,7 @@ class StateEvaluatorSpec : StringSpec(
                 with(evaluator) { evaluate(null, AppRecStatus.REJECTED) }
             }
 
-            result shouldBeEitherLeftWhere { it is StateEvaluationError.UnresolvableState }
+            result shouldBeLeftWhere { it is StateEvaluationError.UnresolvableState }
         }
     }
 )
