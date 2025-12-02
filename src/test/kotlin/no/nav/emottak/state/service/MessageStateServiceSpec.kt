@@ -12,9 +12,6 @@ import no.nav.emottak.state.model.ExternalDeliveryState.REJECTED
 import no.nav.emottak.state.model.ExternalDeliveryState.UNCONFIRMED
 import no.nav.emottak.state.model.MessageType.DIALOG
 import no.nav.emottak.state.model.UpdateState
-import no.nav.emottak.state.repository.FakeMessageRepository
-import no.nav.emottak.state.repository.FakeMessageStateHistoryRepository
-import no.nav.emottak.state.repository.FakeMessageStateTransactionRepository
 import java.net.URI
 import kotlin.uuid.Uuid
 
@@ -28,7 +25,7 @@ class MessageStateServiceSpec : StringSpec(
     {
 
         "Create initial state – creates message with null external states and one baseline history entry" {
-            val messageStateService = transactionalMessageStateService()
+            val messageStateService = FakeTransactionalMessageStateService()
 
             val externalRefId = Uuid.random()
             val externalMessageUrl = URI(MESSAGE1).toURL()
@@ -59,7 +56,7 @@ class MessageStateServiceSpec : StringSpec(
         }
 
         "Record state change – updates external state and appends history" {
-            val messageStateService = transactionalMessageStateService()
+            val messageStateService = FakeTransactionalMessageStateService()
 
             val externalRefId = Uuid.random()
             val externalMessageUrl = URI(MESSAGE1).toURL()
@@ -95,13 +92,13 @@ class MessageStateServiceSpec : StringSpec(
         }
 
         "Get message snapshot – returns null when missing" {
-            val messageStateService = transactionalMessageStateService()
+            val messageStateService = FakeTransactionalMessageStateService()
 
             messageStateService.getMessageSnapshot(Uuid.random()).shouldBeNull()
         }
 
         "Find pollable messages – only messages with NULL, ACKNOWLEDGED or UNCONFIRMED delivery state" {
-            val messageStateService = transactionalMessageStateService()
+            val messageStateService = FakeTransactionalMessageStateService()
 
             val externalRefId1 = Uuid.random()
             val externalMessageUrl1 = URI(MESSAGE1).toURL()
@@ -211,7 +208,7 @@ class MessageStateServiceSpec : StringSpec(
         }
 
         "Mark as polled – updates last polled at only for selected messages" {
-            val messageStateService = transactionalMessageStateService()
+            val messageStateService = FakeTransactionalMessageStateService()
 
             val externalRefId1 = Uuid.random()
             val externalMessageUrl1 = URI(MESSAGE1).toURL()
@@ -244,17 +241,3 @@ class MessageStateServiceSpec : StringSpec(
         }
     }
 )
-
-fun transactionalMessageStateService(): TransactionalMessageStateService {
-    val messageRepository = FakeMessageRepository()
-    val historyRepository = FakeMessageStateHistoryRepository()
-    val txRepository = FakeMessageStateTransactionRepository(
-        messageRepository,
-        historyRepository
-    )
-    return TransactionalMessageStateService(
-        messageRepository,
-        historyRepository,
-        txRepository
-    )
-}
