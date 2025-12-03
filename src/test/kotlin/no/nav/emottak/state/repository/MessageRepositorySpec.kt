@@ -27,11 +27,11 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
-private const val MESSAGE1 = "http://exmaple.com/messages/1"
-private const val MESSAGE2 = "http://exmaple.com/messages/2"
-private const val MESSAGE3 = "http://exmaple.com/messages/3"
-private const val MESSAGE4 = "http://exmaple.com/messages/4"
-private const val MESSAGE5 = "http://exmaple.com/messages/5"
+private const val MESSAGE1 = "http://example.com/messages/1"
+private const val MESSAGE2 = "http://example.com/messages/2"
+private const val MESSAGE3 = "http://example.com/messages/3"
+private const val MESSAGE4 = "http://example.com/messages/4"
+private const val MESSAGE5 = "http://example.com/messages/5"
 
 class MessageRepositorySpec : StringSpec(
     {
