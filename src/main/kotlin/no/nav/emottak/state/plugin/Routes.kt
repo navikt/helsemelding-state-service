@@ -17,7 +17,7 @@ import no.nav.emottak.ediadapter.model.GetMessagesRequest
 import no.nav.emottak.ediadapter.model.OrderBy
 import no.nav.emottak.ediadapter.model.PostAppRecRequest
 import no.nav.emottak.ediadapter.model.PostMessageRequest
-import no.nav.emottak.state.integration.scopedAuthHttpClient
+import no.nav.emottak.ediadapter.client.scopedAuthHttpClient
 import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
 
