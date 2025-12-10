@@ -70,7 +70,7 @@ dependencies {
     implementation(libs.postgresql)
     implementation(libs.token.validation.ktor.v3)
     implementation(libs.emottak.utils)
-    implementation("no.nav.emottak:edi-adapter-client:0.0.1-SNAPSHOT-2")
+    implementation("no.nav.emottak:edi-adapter-client:0.0.2")
     testImplementation(testLibs.bundles.kotest)
     testImplementation(testLibs.kotest.assertions.arrow)
     testImplementation(testLibs.kotest.extensions.jvm)

@@ -9,7 +9,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import no.nav.emottak.ediadapter.client.EdiAdapterClient
+import no.nav.emottak.ediadapter.client.HttpEdiAdapterClient
 import no.nav.emottak.ediadapter.client.scopedAuthHttpClient
 import no.nav.emottak.ediadapter.model.AppRecError
 import no.nav.emottak.ediadapter.model.AppRecStatus
@@ -44,10 +44,10 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         val log = LoggerFactory.getLogger("no.nav.emottak.state.App")
 
         val scope = "api://dev-gcp.team-emottak.edi-adapter/.default"
-        val ediAdapterUrl = "https://edi-transport.intern.dev.nav.no"
+        val ediAdapterUrl = "https://edi-adapter.intern.dev.nav.no"
 
         val scopedClient = scopedAuthHttpClient(scope)
-        val ediAdapterClient = EdiAdapterClient(ediAdapterUrl, scopedClient)
+        val ediAdapterClient = HttpEdiAdapterClient(scopedClient)
 
         // 1
         try {
