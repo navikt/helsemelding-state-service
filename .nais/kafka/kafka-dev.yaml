@@ -18,5 +18,5 @@ spec:
     segmentHours: 168
   acl:
     - access: readwrite
-      application: helsemelding-state-service
+      application: state-service
       team: team-helsemelding
