@@ -19,7 +19,7 @@ spec:
       - type: POSTGRES_17
         tier: db-f1-micro
         databases:
-          - name: emottak-statedb
+          - name: helsemelding-statedb
             envVarPrefix: POSTGRES
   webproxy: true
   image: {{image}}
