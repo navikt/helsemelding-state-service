@@ -20,6 +20,7 @@ class FakeEdiAdapterClient : EdiAdapterClient {
     private val businessDocumentById = mutableMapOf<Uuid, Pair<GetBusinessDocumentResponse?, ErrorMessage?>>()
     private val postApprecById = mutableMapOf<Uuid, Pair<Metadata?, ErrorMessage?>>()
     private val markAsReadById = mutableMapOf<Uuid, Pair<Boolean?, ErrorMessage?>>()
+    private val postMessages = ArrayDeque<Pair<Metadata?, ErrorMessage?>>()
 
     fun givenStatus(
         id: Uuid,
@@ -51,6 +52,12 @@ class FakeEdiAdapterClient : EdiAdapterClient {
         message: Message
     ) {
         messageById[id] = Pair(message, null)
+    }
+
+    fun givenPostMessage(
+        message: Pair<Metadata?, ErrorMessage?>
+    ) {
+        postMessages.add(message)
     }
 
     override suspend fun getMessageStatus(
@@ -85,7 +92,8 @@ class FakeEdiAdapterClient : EdiAdapterClient {
 
     override suspend fun getMessages(getMessagesRequest: GetMessagesRequest) = Pair(emptyList<Message>(), null)
 
-    override suspend fun postMessage(postMessagesRequest: PostMessageRequest) = Pair(null, null)
+    override suspend fun postMessage(postMessagesRequest: PostMessageRequest): Pair<Metadata?, ErrorMessage?> =
+        postMessages.removeFirstOrNull() ?: Pair(null, null)
 
     override fun close() {}
 }
