@@ -1,5 +1,7 @@
 package no.nav.helsemelding.state.processor
 
+import arrow.core.Either.Left
+import arrow.core.Either.Right
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.nulls.shouldBeNull
@@ -30,7 +32,7 @@ class MessageProcessorSpec : StringSpec(
                 id = uuid,
                 location = location
             )
-            ediAdapterClient.givenPostMessage(Pair(metadata, null))
+            ediAdapterClient.givenPostMessage(Right(metadata))
 
             messageStateService.getMessageSnapshot(uuid).shouldBeNull()
 
@@ -62,7 +64,7 @@ class MessageProcessorSpec : StringSpec(
                 requestId = Uuid.random().toString()
             )
 
-            ediAdapterClient.givenPostMessage(Pair(null, errorMessage500))
+            ediAdapterClient.givenPostMessage(Left(errorMessage500))
 
             messageStateService.getMessageSnapshot(uuid).shouldBeNull()
 

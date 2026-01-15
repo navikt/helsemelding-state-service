@@ -1,5 +1,8 @@
 package no.nav.helsemelding.state
 
+import arrow.core.Either
+import arrow.core.Either.Left
+import arrow.core.Either.Right
 import no.nav.helsemelding.ediadapter.client.EdiAdapterClient
 import no.nav.helsemelding.ediadapter.model.AppRecStatus
 import no.nav.helsemelding.ediadapter.model.ApprecInfo
@@ -15,19 +18,25 @@ import no.nav.helsemelding.ediadapter.model.StatusInfo
 import kotlin.uuid.Uuid
 
 class FakeEdiAdapterClient : EdiAdapterClient {
-    private val messageStatusById = mutableMapOf<Uuid, Pair<List<StatusInfo>?, ErrorMessage?>>()
-    private val messageById = mutableMapOf<Uuid, Pair<Message?, ErrorMessage?>>()
-    private val businessDocumentById = mutableMapOf<Uuid, Pair<GetBusinessDocumentResponse?, ErrorMessage?>>()
-    private val postApprecById = mutableMapOf<Uuid, Pair<Metadata?, ErrorMessage?>>()
-    private val markAsReadById = mutableMapOf<Uuid, Pair<Boolean?, ErrorMessage?>>()
-    private val postMessages = ArrayDeque<Pair<Metadata?, ErrorMessage?>>()
+    private val messageStatusById = mutableMapOf<Uuid, Either<ErrorMessage, List<StatusInfo>>>()
+    private val messageById = mutableMapOf<Uuid, Either<ErrorMessage, Message>>()
+    private val businessDocumentById = mutableMapOf<Uuid, Either<ErrorMessage, GetBusinessDocumentResponse>>()
+    private val postApprecById = mutableMapOf<Uuid, Either<ErrorMessage, Metadata>>()
+    private val markAsReadById = mutableMapOf<Uuid, Either<ErrorMessage, Boolean>>()
+    private val postMessages = ArrayDeque<Either<ErrorMessage, Metadata>>()
+
+    val errorMessage404 = ErrorMessage(
+        error = "Not Found",
+        errorCode = 1000,
+        requestId = Uuid.random().toString()
+    )
 
     fun givenStatus(
         id: Uuid,
         deliveryState: DeliveryState,
         appRecStatus: AppRecStatus?
     ) {
-        messageStatusById[id] = Pair(
+        messageStatusById[id] = Right(
             listOf(
                 StatusInfo(
                     transportDeliveryState = deliveryState,
@@ -35,8 +44,7 @@ class FakeEdiAdapterClient : EdiAdapterClient {
                     receiverHerId = 1,
                     sent = true
                 )
-            ),
-            null
+            )
         )
     }
 
@@ -44,56 +52,56 @@ class FakeEdiAdapterClient : EdiAdapterClient {
         id: Uuid,
         error: ErrorMessage
     ) {
-        messageStatusById[id] = Pair(null, error)
+        messageStatusById[id] = Left(error)
     }
 
     fun givenMessage(
         id: Uuid,
         message: Message
     ) {
-        messageById[id] = Pair(message, null)
+        messageById[id] = Right(message)
     }
 
     fun givenPostMessage(
-        message: Pair<Metadata?, ErrorMessage?>
+        message: Either<ErrorMessage, Metadata>
     ) {
         postMessages.add(message)
     }
 
     override suspend fun getMessageStatus(
         id: Uuid
-    ): Pair<List<StatusInfo>?, ErrorMessage?> =
-        messageStatusById[id] ?: Pair(emptyList(), null)
+    ): Either<ErrorMessage, List<StatusInfo>> =
+        messageStatusById[id] ?: Right(emptyList())
 
     override suspend fun getMessage(
         id: Uuid
-    ): Pair<Message?, ErrorMessage?> =
-        messageById[id] ?: Pair(null, null)
+    ): Either<ErrorMessage, Message> =
+        messageById[id] ?: Left(errorMessage404)
 
     override suspend fun getBusinessDocument(
         id: Uuid
-    ): Pair<GetBusinessDocumentResponse?, ErrorMessage?> =
-        businessDocumentById[id] ?: Pair(null, null)
+    ): Either<ErrorMessage, GetBusinessDocumentResponse> =
+        businessDocumentById[id] ?: Left(errorMessage404)
 
     override suspend fun postApprec(
         id: Uuid,
         apprecSenderHerId: Int,
         postAppRecRequest: PostAppRecRequest
-    ): Pair<Metadata?, ErrorMessage?> =
-        postApprecById[id] ?: Pair(null, null)
+    ): Either<ErrorMessage, Metadata> =
+        postApprecById[id] ?: Left(errorMessage404)
 
     override suspend fun markMessageAsRead(
         id: Uuid,
         herId: Int
-    ): Pair<Boolean?, ErrorMessage?> =
-        markAsReadById[id] ?: Pair(true, null)
+    ): Either<ErrorMessage, Boolean> =
+        markAsReadById[id] ?: Right(true)
 
-    override suspend fun getApprecInfo(id: Uuid) = Pair(emptyList<ApprecInfo>(), null)
+    override suspend fun getApprecInfo(id: Uuid) = Right(emptyList<ApprecInfo>())
 
-    override suspend fun getMessages(getMessagesRequest: GetMessagesRequest) = Pair(emptyList<Message>(), null)
+    override suspend fun getMessages(getMessagesRequest: GetMessagesRequest) = Right(emptyList<Message>())
 
-    override suspend fun postMessage(postMessagesRequest: PostMessageRequest): Pair<Metadata?, ErrorMessage?> =
-        postMessages.removeFirstOrNull() ?: Pair(null, null)
+    override suspend fun postMessage(postMessagesRequest: PostMessageRequest): Either<ErrorMessage, Metadata> =
+        postMessages.removeFirstOrNull() ?: Left(errorMessage404)
 
     override fun close() {}
 }
