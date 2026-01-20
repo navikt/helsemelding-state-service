@@ -126,6 +126,14 @@ dependencyResolutionManagement {
                 password = System.getenv("GITHUB_TOKEN")
             }
         }
+        maven {
+            name = "Payload Signing Service"
+            url = uri("https://maven.pkg.github.com/navikt/helsemelding-payload-signing-service")
+            credentials {
+                username = "token"
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
 
