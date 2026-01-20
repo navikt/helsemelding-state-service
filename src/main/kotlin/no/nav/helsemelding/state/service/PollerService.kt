@@ -58,12 +58,9 @@ class PollerService(
 
     internal suspend fun pollAndProcessMessage(message: MessageState) = with(stateEvaluatorService) {
         val externalRefId = message.externalRefId
-        val (externalStatuses, error) = ediAdapterClient.getMessageStatus(externalRefId)
-
-        when (error) {
-            null -> processMessage(externalStatuses, message)
-            else -> log.error { error }
-        }
+        ediAdapterClient.getMessageStatus(externalRefId)
+            .onRight { statusInfos -> processMessage(statusInfos, message) }
+            .onLeft { errorMessage -> log.error { errorMessage } }
     }
 
     private suspend fun processMessage(
