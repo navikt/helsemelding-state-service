@@ -37,10 +37,10 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         val log = LoggerFactory.getLogger("no.nav.helsemelding.state.App")
 
         val scope = "api://dev-gcp.helsemelding.payload-signing-service/.default"
-        val ediAdapterUrl = "https://helsemelding-payload-signing-service.intern.dev.nav.no"
+        val payloadSigningServiceUrl = "https://helsemelding-payload-signing-service.intern.dev.nav.no"
 
         val scopedClient = scopedAuthHttpClient(scope)
-        val ediAdapterClient = HttpPayloadSigningClient(scopedClient, ediAdapterUrl)
+        val payloadSigningClient = HttpPayloadSigningClient(scopedClient, payloadSigningServiceUrl)
 
         // 1
         val payloadRequestOut = PayloadRequest(
@@ -49,7 +49,7 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         )
 
         try {
-            val response = ediAdapterClient.signPayload(payloadRequestOut)
+            val response = payloadSigningClient.signPayload(payloadRequestOut)
             log.info("Signing test: 1 Response from signing service: Left: ${response.leftOrNull()} Right: ${response.getOrNull()}")
             log.info("Signing test: 1 test succeeded signPayload(OUT)")
         } catch (e: Exception) {
@@ -64,7 +64,7 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         )
 
         try {
-            val response = ediAdapterClient.signPayload(payloadRequestIn)
+            val response = payloadSigningClient.signPayload(payloadRequestIn)
             log.info("Signing test: 1 Response from signing service: Left: ${response.leftOrNull()} Right: ${response.getOrNull()}")
             log.info("Signing test: 1 test succeeded signPayload(IN)")
         } catch (e: Exception) {
