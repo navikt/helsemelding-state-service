@@ -3,7 +3,7 @@ kind: Topic
 metadata:
   labels:
     team: helsemelding
-  name: dialog.ebxml.payload
+  name: dialog.out.xml
   namespace: helsemelding
 spec:
   pool: nav-dev
