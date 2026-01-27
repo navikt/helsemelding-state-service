@@ -1,5 +1,6 @@
 package no.nav.helsemelding.state.plugin
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -12,15 +13,21 @@ import no.nav.helsemelding.payloadsigning.client.HttpPayloadSigningClient
 import no.nav.helsemelding.payloadsigning.client.scopedAuthHttpClient
 import no.nav.helsemelding.payloadsigning.model.Direction
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
+import no.nav.helsemelding.state.service.MessageStateService
 import org.slf4j.LoggerFactory
+import kotlin.uuid.Uuid
 
 fun Application.configureRoutes(
-    registry: PrometheusMeterRegistry
+    registry: PrometheusMeterRegistry,
+    messageStateService: MessageStateService
 ) {
-    routing { internalRoutes(registry) }
+    routing { internalRoutes(registry, messageStateService) }
 }
 
-fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
+fun Route.internalRoutes(
+    registry: PrometheusMeterRegistry,
+    messageStateService: MessageStateService
+) {
     get("/prometheus") {
         call.respond(registry.scrape())
     }
@@ -33,7 +40,7 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         }
     }
 
-    get("/signing-test") {
+    get("/telemetry-test") {
         val log = LoggerFactory.getLogger("no.nav.helsemelding.state.App")
 
         val scope = "api://dev-gcp.helsemelding.payload-signing-service/.default"
@@ -43,6 +50,7 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         val payloadSigningClient = HttpPayloadSigningClient(scopedClient, payloadSigningServiceUrl)
 
         // 1
+        // Request to another service
         val payloadRequestOut = PayloadRequest(
             direction = Direction.OUT,
             bytes = "<MsgHead><Body>hello world</Body></MsgHead>".toByteArray()
@@ -58,18 +66,9 @@ fun Route.internalRoutes(registry: PrometheusMeterRegistry) {
         }
 
         // 2
-        val payloadRequestIn = PayloadRequest(
-            direction = Direction.IN,
-            bytes = "<MsgHead><Body>hello world</Body></MsgHead>".toByteArray()
-        )
+        // Request to database
+        val messageSnapshot = messageStateService.getMessageSnapshot(Uuid.random())
 
-        try {
-            val response = payloadSigningClient.signPayload(payloadRequestIn)
-            log.info("Signing test: 1 Response from signing service: Left: ${response.leftOrNull()} Right: ${response.getOrNull()}")
-            log.info("Signing test: 1 test succeeded signPayload(IN)")
-        } catch (e: Exception) {
-            log.error("Signing test: 1 Exception occurred while calling signing service", e)
-            log.info("Signing test: 1 test failed signPayload(IN)")
-        }
+        call.respond(HttpStatusCode.OK)
     }
 }

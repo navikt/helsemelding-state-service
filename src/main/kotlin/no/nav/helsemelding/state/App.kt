@@ -35,10 +35,11 @@ fun main() = SuspendApp {
     result {
         resourceScope {
             val deps = dependencies()
+            val messageStateService = messageStateService(deps.database)
 
             val poller = PollerService(
                 deps.ediAdapterClient,
-                messageStateService(deps.database),
+                messageStateService,
                 stateEvaluatorService(),
                 dialogMessagePublisher(deps.kafkaPublisher)
             )
@@ -47,7 +48,7 @@ fun main() = SuspendApp {
                 Netty,
                 port = config().server.port.value,
                 preWait = config().server.preWait,
-                module = stateServiceModule(deps.meterRegistry)
+                module = stateServiceModule(deps.meterRegistry, messageStateService)
             )
 
             schedulePoller(poller)
@@ -59,11 +60,12 @@ fun main() = SuspendApp {
 }
 
 internal fun stateServiceModule(
-    meterRegistry: PrometheusMeterRegistry
+    meterRegistry: PrometheusMeterRegistry,
+    messageStateService: MessageStateService
 ): Application.() -> Unit {
     return {
         configureMetrics(meterRegistry)
-        configureRoutes(meterRegistry)
+        configureRoutes(meterRegistry, messageStateService)
     }
 }
 
