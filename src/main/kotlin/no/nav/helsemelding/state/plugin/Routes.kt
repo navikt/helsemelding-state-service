@@ -76,6 +76,15 @@ fun Route.internalRoutes(
         // Call a method
         val newMessageState = updateMessageState(Uuid.random(), MessageDeliveryState.COMPLETED)
 
+        // 4
+        // throw exception
+        try {
+            unsafeOperation()
+        } catch (e: Exception) {
+            log.error("That is the plan", e)
+        }
+
+
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -86,4 +95,9 @@ fun updateMessageState(
     @SpanAttribute("message.state.value") state: MessageDeliveryState
 ): String {
     return "New state for message $messageId is $state"
+}
+
+@WithSpan("message.state.unsafe.operation")
+fun unsafeOperation() {
+    throw IllegalStateException("This is a test exception for telemetry")
 }

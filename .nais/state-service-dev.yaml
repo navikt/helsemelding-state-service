@@ -79,3 +79,5 @@ spec:
           namespace: aura
           cluster: dev-gcp
   env:
+    - name: OTEL_LOGS_EXPORTER
+      value: otlp
