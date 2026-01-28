@@ -18,6 +18,7 @@ import no.nav.helsemelding.state.model.MessageType.DIALOG
 import no.nav.helsemelding.state.receiver.MessageReceiver
 import no.nav.helsemelding.state.service.MessageStateService
 import java.net.URI
+import kotlin.io.encoding.Base64
 import kotlin.uuid.Uuid
 
 private val log = KotlinLogging.logger {}
@@ -39,7 +40,7 @@ class MessageProcessor(
 
     internal fun processAndSendMessage(scope: CoroutineScope, dialogMessage: DialogMessage) = scope.launch {
         val postMessageRequest = PostMessageRequest(
-            businessDocument = dialogMessage.toString(),
+            businessDocument = Base64.encode(dialogMessage.payload),
             contentType = ContentType.Application.Xml.toString(),
             contentTransferEncoding = BASE64_ENCODING
         )
