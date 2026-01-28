@@ -21,6 +21,8 @@ spec:
         databases:
           - name: helsemelding-statedb
             envVarPrefix: POSTGRES
+  kafka:
+    pool: nav-dev
   webproxy: true
   image: {{image}}
   liveness:
