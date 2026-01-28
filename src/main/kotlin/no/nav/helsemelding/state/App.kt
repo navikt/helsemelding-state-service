@@ -7,6 +7,7 @@ import arrow.fx.coroutines.ResourceScope
 import arrow.fx.coroutines.resourceScope
 import arrow.resilience.Schedule
 import io.github.nomisRev.kafka.publisher.KafkaPublisher
+import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.server.application.Application
 import io.ktor.server.netty.Netty
@@ -18,7 +19,9 @@ import no.nav.helsemelding.state.evaluator.StateEvaluator
 import no.nav.helsemelding.state.evaluator.StateTransitionValidator
 import no.nav.helsemelding.state.plugin.configureMetrics
 import no.nav.helsemelding.state.plugin.configureRoutes
+import no.nav.helsemelding.state.processor.MessageProcessor
 import no.nav.helsemelding.state.publisher.DialogMessagePublisher
+import no.nav.helsemelding.state.receiver.MessageReceiver
 import no.nav.helsemelding.state.repository.ExposedMessageRepository
 import no.nav.helsemelding.state.repository.ExposedMessageStateHistoryRepository
 import no.nav.helsemelding.state.repository.ExposedMessageStateTransactionRepository
@@ -37,11 +40,19 @@ fun main() = SuspendApp {
             val deps = dependencies()
             val messageStateService = messageStateService(deps.database)
 
+            val scope = coroutineScope(coroutineContext)
+
             val poller = PollerService(
                 deps.ediAdapterClient,
                 messageStateService,
                 stateEvaluatorService(),
                 dialogMessagePublisher(deps.kafkaPublisher)
+            )
+
+            val messageProcessor = MessageProcessor(
+                messageReceiver = messageReceiver(deps.kafkaReceiver),
+                messageStateService = messageStateService(deps.database),
+                ediAdapterClient = deps.ediAdapterClient
             )
 
             server(
@@ -50,6 +61,8 @@ fun main() = SuspendApp {
                 preWait = config().server.preWait,
                 module = stateServiceModule(deps.meterRegistry, messageStateService)
             )
+
+            messageProcessor.processMessages(scope)
 
             schedulePoller(poller)
 
@@ -102,3 +115,6 @@ private fun messageStateService(database: Database): MessageStateService {
         messageStateTransactionRepository
     )
 }
+
+private fun messageReceiver(kafkaReceiver: KafkaReceiver<String, ByteArray>): MessageReceiver =
+    MessageReceiver(kafkaReceiver)
