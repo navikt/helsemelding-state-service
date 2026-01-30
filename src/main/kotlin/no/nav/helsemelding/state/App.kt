@@ -81,7 +81,7 @@ internal fun stateServiceModule(
 private suspend fun schedulePoller(pollerService: PollerService): Long {
     return Schedule
         .spaced<Unit>(config().poller.scheduleInterval)
-        .repeat { pollerService::pollMessages }
+        .repeat { pollerService.pollMessages() }
 }
 
 private fun logError(t: Throwable) = log.error { "Shutdown state-service due to: ${t.stackTraceToString()}" }
