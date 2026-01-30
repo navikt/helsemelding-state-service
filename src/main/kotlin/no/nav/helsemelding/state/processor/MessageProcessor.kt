@@ -4,11 +4,11 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.ContentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import no.nav.helsemelding.ediadapter.client.EdiAdapterClient
 import no.nav.helsemelding.ediadapter.model.Metadata
 import no.nav.helsemelding.ediadapter.model.PostMessageRequest
@@ -29,16 +29,15 @@ class MessageProcessor(
     private val messageStateService: MessageStateService,
     private val ediAdapterClient: EdiAdapterClient
 ) {
-    fun processMessages(scope: CoroutineScope) =
+    fun processMessages(scope: CoroutineScope): Job =
         messageFlow()
-            .onEach { message -> processAndSendMessage(scope, message) }
+            .onEach { message -> processAndSendMessage(message) }
             .flowOn(Dispatchers.IO)
             .launchIn(scope)
 
-    private fun messageFlow(): Flow<DialogMessage> =
-        messageReceiver.receiveMessages()
+    private fun messageFlow(): Flow<DialogMessage> = messageReceiver.receiveMessages()
 
-    internal fun processAndSendMessage(scope: CoroutineScope, dialogMessage: DialogMessage) = scope.launch {
+    internal suspend fun processAndSendMessage(dialogMessage: DialogMessage) {
         val postMessageRequest = PostMessageRequest(
             businessDocument = Base64.encode(dialogMessage.payload),
             contentType = ContentType.Application.Xml.toString(),
@@ -46,18 +45,33 @@ class MessageProcessor(
         )
 
         ediAdapterClient.postMessage(postMessageRequest)
-            .onRight { metadata -> initializeState(metadata, dialogMessage.id) }
-            .onLeft { errorMessage -> log.error { "Received error when processing dialog message: $errorMessage" } }
+            .onRight { metadata ->
+                val externalRefId = metadata.id
+                log.info {
+                    "externalRefId=$externalRefId Successfully sent dialog message (dialogMessageId=${dialogMessage.id}) to edi adapter"
+                }
+                initializeState(metadata, dialogMessage.id)
+            }
+            .onLeft { error ->
+                log.error {
+                    "dialogMessageId=${dialogMessage.id} Failed sending message to edi adapter: $error"
+                }
+            }
     }
 
     private suspend fun initializeState(metadata: Metadata, dialogMessageId: Uuid) {
-        val createState = CreateState(
-            messageType = DIALOG,
-            externalRefId = metadata.id,
-            externalMessageUrl = URI.create(metadata.location).toURL()
+        val snapshot = messageStateService.createInitialState(
+            CreateState(
+                messageType = DIALOG,
+                externalRefId = metadata.id,
+                externalMessageUrl = URI.create(metadata.location).toURL()
+            )
         )
 
-        val newMessage = messageStateService.createInitialState(createState)
-        log.info { "Processed and sent message with reference id: $dialogMessageId" }
+        val externalRefId = snapshot.messageState.externalRefId
+
+        log.info {
+            "externalRefId=$externalRefId State initialized (dialogMessageId=$dialogMessageId)"
+        }
     }
 }
