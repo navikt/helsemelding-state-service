@@ -95,13 +95,13 @@ fun Route.internalRoutes(
         val traceId = ctx.traceId
         val spanId = ctx.spanId
 
-        MDC.putCloseable("trace_id", ctx.traceId).use {
-            MDC.putCloseable("span_id", ctx.spanId).use {
-                log.info("Detailed log her. TraceId: $traceId SpanId: $spanId")
+        MDC.putCloseable("trace_id", traceId).use {
+            MDC.putCloseable("span_id", spanId).use {
+                log.info("Detailed log her")
             }
         }
 
-        call.respond(HttpStatusCode.OK)
+        call.respond(HttpStatusCode.OK, "TraceId: $traceId, SpanId: $spanId")
     }
 }
 
