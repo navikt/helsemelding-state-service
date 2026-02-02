@@ -9,7 +9,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import io.opentelemetry.api.GlobalOpenTelemetry
 import io.opentelemetry.api.trace.Span
 import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
@@ -20,6 +19,7 @@ import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.service.MessageStateService
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import kotlin.uuid.Uuid
 
 val log = LoggerFactory.getLogger("no.nav.helsemelding.state.App")
@@ -90,12 +90,16 @@ fun Route.internalRoutes(
             // Just go on
         }
 
-        // 6
-        // Use custom tracer
-        val otel = GlobalOpenTelemetry.get()
-        val tracer = otel.getTracer("custom.operation")
-        val span = tracer.spanBuilder("message.custom.operation").startSpan()
-        span.setAttribute("message.custom.operation.key1", "value1")
+        // Get trace_id og span_id
+        val ctx = Span.current().spanContext
+        val traceId = ctx.traceId
+        val spanId = ctx.spanId
+
+        MDC.putCloseable("trace_id", ctx.traceId).use {
+            MDC.putCloseable("span_id", ctx.spanId).use {
+                log.info("Detailed log her. TraceId: $traceId SpanId: $spanId")
+            }
+        }
 
         call.respond(HttpStatusCode.OK)
     }
