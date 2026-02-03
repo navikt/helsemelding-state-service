@@ -58,5 +58,17 @@ class MessageReceiverSpec : KafkaSpec(
                 }
             }
         }
+
+        "if key is a valid uuid then isValidRecordKey returns true" {
+            isValidRecordKey(Uuid.random().toString()) shouldBe true
+        }
+
+        "if key is null then isValidRecordKey returns false" {
+            isValidRecordKey(null) shouldBe false
+        }
+
+        "if key is an invalid uuid then isValidRecordKey returns false" {
+            isValidRecordKey("1234-abcd") shouldBe false
+        }
     }
 )
