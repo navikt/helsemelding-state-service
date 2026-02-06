@@ -1,15 +1,17 @@
 package no.nav.helsemelding.state.model
 
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import no.nav.helsemelding.ediadapter.model.ApprecInfo
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-interface StatusMessage
+@Serializable
+sealed interface StatusMessage
 
 @Serializable
+@JsonIgnoreUnknownKeys
 data class ApprecStatusMessage(
     val messageId: Uuid,
     val source: String = "apprec",
@@ -18,6 +20,7 @@ data class ApprecStatusMessage(
 ) : StatusMessage
 
 @Serializable
+@JsonIgnoreUnknownKeys
 data class TransportStatusMessage(
     val messageId: Uuid,
     val source: String = "transport",
@@ -31,11 +34,4 @@ data class TransportStatusMessage(
     )
 }
 
-fun StatusMessage.toJson(): String =
-    when (this) {
-        is ApprecStatusMessage -> toJson(ApprecStatusMessage.serializer(), this)
-        is TransportStatusMessage -> toJson(TransportStatusMessage.serializer(), this)
-        else -> error("Unknown StatusMessage type: ${this::class}")
-    }
-
-private fun <T> toJson(serializer: KSerializer<T>, value: T): String = Json.encodeToString(serializer, value)
+fun StatusMessage.toJson(): String = Json.encodeToString(StatusMessage.serializer(), this)

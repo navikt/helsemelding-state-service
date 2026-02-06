@@ -11,6 +11,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import no.nav.helsemelding.ediadapter.client.EdiAdapterClient
 import no.nav.helsemelding.ediadapter.model.ApprecInfo
+import no.nav.helsemelding.ediadapter.model.ErrorMessage
 import no.nav.helsemelding.ediadapter.model.StatusInfo
 import no.nav.helsemelding.state.EdiAdapterError.FetchFailure
 import no.nav.helsemelding.state.EdiAdapterError.NoApprecReturned
@@ -80,17 +81,16 @@ class PollerService(
         }
     }
 
-    internal suspend fun pollAndProcessMessage(message: MessageState) =
-        with(stateEvaluatorService) {
-            log.debug { "${message.logPrefix()} Fetching status from EDI Adapter" }
+    internal suspend fun pollAndProcessMessage(message: MessageState): Either<ErrorMessage, List<StatusInfo>> {
+        log.debug { "${message.logPrefix()} Fetching status from EDI Adapter" }
 
-            ediAdapterClient.getMessageStatus(message.externalRefId)
-                .onRight { statuses ->
-                    log.debug { "${message.logPrefix()} Received ${statuses.size} statuses" }
-                    processMessage(statuses, message)
-                }
-                .onLeft { error -> log.error { "${message.logPrefix()} Error fetching status: $error" } }
-        }
+        return ediAdapterClient.getMessageStatus(message.externalRefId)
+            .onRight { statuses ->
+                log.debug { "${message.logPrefix()} Received ${statuses.size} statuses" }
+                processMessage(statuses, message)
+            }
+            .onLeft { error -> log.error { "${message.logPrefix()} Error fetching status: $error" } }
+    }
 
     private suspend fun processMessage(
         externalStatuses: List<StatusInfo>?,
