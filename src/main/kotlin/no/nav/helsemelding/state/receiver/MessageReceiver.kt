@@ -38,11 +38,10 @@ internal fun isValidRecordKey(record: ReceiverRecord<String, ByteArray>): Boolea
         return false
     }
 
-    return try {
-        Uuid.parse(key)
+    return if (Uuid.parseOrNull(key) != null) {
         true
-    } catch (e: IllegalArgumentException) {
-        log.error { "Receiver record key is invalid and therefore ignored: $e." }
+    } else {
+        log.error { "Receiver record key: $key is invalid and therefore ignored." }
         false
     }
 }
