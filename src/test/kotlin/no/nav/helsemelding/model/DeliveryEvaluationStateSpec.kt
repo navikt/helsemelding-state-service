@@ -2,68 +2,53 @@ package no.nav.helsemelding.model
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import no.nav.helsemelding.state.evaluator.TransportStatusTranslator
 import no.nav.helsemelding.state.model.AppRecStatus
 import no.nav.helsemelding.state.model.AppRecStatus.OK
 import no.nav.helsemelding.state.model.AppRecStatus.OK_ERROR_IN_MESSAGE_PART
-import no.nav.helsemelding.state.model.AppRecStatus.REJECTED
 import no.nav.helsemelding.state.model.DeliveryEvaluationState
-import no.nav.helsemelding.state.model.ExternalDeliveryState
-import no.nav.helsemelding.state.model.ExternalDeliveryState.ACKNOWLEDGED
-import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageDeliveryState.COMPLETED
+import no.nav.helsemelding.state.model.MessageDeliveryState.INVALID
 import no.nav.helsemelding.state.model.MessageDeliveryState.NEW
 import no.nav.helsemelding.state.model.MessageDeliveryState.PENDING
+import no.nav.helsemelding.state.model.MessageDeliveryState.REJECTED
+import no.nav.helsemelding.state.model.TransportStatus
+import no.nav.helsemelding.state.model.TransportStatus.ACKNOWLEDGED
 import no.nav.helsemelding.state.model.resolveDelivery
 
 class DeliveryEvaluationStateSpec : StringSpec(
     {
-        val translator = TransportStatusTranslator()
-
-        fun eval(external: ExternalDeliveryState?, appRec: AppRecStatus?): DeliveryEvaluationState =
+        fun toDelivery(transport: TransportStatus, appRec: AppRecStatus?) =
             DeliveryEvaluationState(
-                transport = translator.translate(external),
+                transport = transport,
                 appRec = appRec
             )
 
-        "Null delivery + null apprec → NEW" {
-            eval(null, null).resolveDelivery().state shouldBe NEW
+        "NEW transport + null apprec → NEW" {
+            toDelivery(TransportStatus.NEW, null).resolveDelivery().state shouldBe NEW
         }
 
-        "ACK delivery + null apprec → PENDING" {
-            eval(ACKNOWLEDGED, null).resolveDelivery().state shouldBe PENDING
+        "ACK transport + null apprec → PENDING" {
+            toDelivery(ACKNOWLEDGED, null).resolveDelivery().state shouldBe PENDING
         }
 
-        "UNCONFIRMED delivery + null apprec → PENDING" {
-            eval(ExternalDeliveryState.UNCONFIRMED, null).resolveDelivery().state shouldBe PENDING
+        "ACK transport + OK apprec → COMPLETED" {
+            toDelivery(ACKNOWLEDGED, OK).resolveDelivery().state shouldBe COMPLETED
         }
 
-        "ACK delivery + OK apprec → COMPLETED" {
-            eval(
-                ACKNOWLEDGED,
-                OK
-            )
-                .resolveDelivery().state shouldBe COMPLETED
+        "ACK transport + OK_ERROR_IN_MESSAGE_PART apprec → COMPLETED" {
+            toDelivery(ACKNOWLEDGED, OK_ERROR_IN_MESSAGE_PART).resolveDelivery().state shouldBe COMPLETED
         }
 
-        "ACK delivery + OK_ERROR_IN_MESSAGE_PART apprec → COMPLETED" {
-            eval(
-                ACKNOWLEDGED,
-                OK_ERROR_IN_MESSAGE_PART
-            )
-                .resolveDelivery().state shouldBe COMPLETED
+        "ACK transport + REJECTED apprec → REJECTED" {
+            toDelivery(ACKNOWLEDGED, AppRecStatus.REJECTED).resolveDelivery().state shouldBe REJECTED
         }
 
-        "ACK delivery + REJECTED apprec → REJECTED" {
-            eval(
-                ACKNOWLEDGED,
-                REJECTED
-            )
-                .resolveDelivery().state shouldBe MessageDeliveryState.REJECTED
+        "REJECTED transport + null apprec → REJECTED" {
+            toDelivery(TransportStatus.REJECTED, null).resolveDelivery().state shouldBe REJECTED
         }
 
-        "REJECTED delivery + null apprec → REJECTED" {
-            eval(ExternalDeliveryState.REJECTED, null).resolveDelivery().state shouldBe MessageDeliveryState.REJECTED
+        "INVALID transport + null apprec → INVALID" {
+            toDelivery(TransportStatus.INVALID, null).resolveDelivery().state shouldBe INVALID
         }
     }
 )

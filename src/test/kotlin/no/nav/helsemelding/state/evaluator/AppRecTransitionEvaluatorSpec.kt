@@ -14,12 +14,24 @@ class AppRecTransitionEvaluatorSpec : StringSpec(
     {
         val evaluator = AppRecTransitionEvaluator()
 
-        "null → null is allowed (no-op)" {
+        "null → null is allowed" {
             either { with(evaluator) { evaluate(null, null) } } shouldBe Right(Unit)
         }
 
-        "OK → OK is allowed (no-op)" {
+        "OK → OK is allowed" {
             either { with(evaluator) { evaluate(OK, OK) } } shouldBe Right(Unit)
+        }
+
+        "OK_ERROR_IN_MESSAGE_PART → OK_ERROR_IN_MESSAGE_PART is allowed" {
+            either {
+                with(evaluator) {
+                    evaluate(OK_ERROR_IN_MESSAGE_PART, OK_ERROR_IN_MESSAGE_PART)
+                }
+            } shouldBe Right(Unit)
+        }
+
+        "REJECTED → REJECTED is allowed" {
+            either { with(evaluator) { evaluate(REJECTED, REJECTED) } } shouldBe Right(Unit)
         }
 
         "null → OK is allowed" {
