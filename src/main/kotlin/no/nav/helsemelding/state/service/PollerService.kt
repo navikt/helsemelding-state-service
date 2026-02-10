@@ -136,11 +136,10 @@ class PollerService(
     ): MessageDeliveryState =
         with(stateEvaluatorService) {
             recover({
-                val oldEvaluationState = evaluate(message)
-                val newEvaluationState = evaluate(externalDeliveryState, appRecStatus)
+                val old = evaluate(message)
+                val new = evaluate(externalDeliveryState, appRecStatus)
 
-                determineNextState(oldEvaluationState, newEvaluationState)
-                    .withLogging(message, oldEvaluationState, newEvaluationState)
+                determineNextState(old, new).withLogging(message, old, new)
             }) { e: StateTransitionError ->
                 log.error { "Failed evaluating state: ${e.withMessageContext(message)}" }
                 INVALID
