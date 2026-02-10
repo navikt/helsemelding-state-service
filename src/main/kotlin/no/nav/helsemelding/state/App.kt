@@ -5,7 +5,6 @@ import arrow.continuations.ktor.server
 import arrow.core.raise.result
 import arrow.fx.coroutines.resourceScope
 import arrow.resilience.Schedule
-import io.github.nomisRev.kafka.publisher.KafkaPublisher
 import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.server.application.Application
@@ -14,12 +13,14 @@ import io.ktor.server.netty.Netty
 import io.ktor.utils.io.CancellationException
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.awaitCancellation
-import no.nav.helsemelding.state.evaluator.StateEvaluator
-import no.nav.helsemelding.state.evaluator.StateTransitionValidator
+import no.nav.helsemelding.state.evaluator.AppRecTransitionEvaluator
+import no.nav.helsemelding.state.evaluator.StateTransitionEvaluator
+import no.nav.helsemelding.state.evaluator.TransportStatusTranslator
+import no.nav.helsemelding.state.evaluator.TransportTransitionEvaluator
 import no.nav.helsemelding.state.plugin.configureMetrics
 import no.nav.helsemelding.state.plugin.configureRoutes
 import no.nav.helsemelding.state.processor.MessageProcessor
-import no.nav.helsemelding.state.publisher.DialogMessagePublisher
+import no.nav.helsemelding.state.publisher.statusMessagePublisher
 import no.nav.helsemelding.state.receiver.MessageReceiver
 import no.nav.helsemelding.state.repository.ExposedMessageRepository
 import no.nav.helsemelding.state.repository.ExposedMessageStateHistoryRepository
@@ -45,7 +46,7 @@ fun main() = SuspendApp {
                 deps.ediAdapterClient,
                 messageStateService(deps.database),
                 stateEvaluatorService(),
-                dialogMessagePublisher(deps.kafkaPublisher)
+                statusMessagePublisher(deps.kafkaPublisher)
             )
 
             val messageProcessor = MessageProcessor(
@@ -91,12 +92,13 @@ private fun logError(t: Throwable) = log.error { "Shutdown state-service due to:
 
 private fun stateEvaluatorService(): StateEvaluatorService =
     StateEvaluatorService(
-        StateEvaluator(),
-        StateTransitionValidator()
-    )
+        TransportStatusTranslator(),
+        StateTransitionEvaluator(
+            TransportTransitionEvaluator(),
+            AppRecTransitionEvaluator()
+        )
 
-private fun dialogMessagePublisher(kafkaPublisher: KafkaPublisher<String, ByteArray>): DialogMessagePublisher =
-    DialogMessagePublisher(kafkaPublisher)
+    )
 
 private fun messageStateService(database: Database): MessageStateService {
     val messageRepository = ExposedMessageRepository(database)
@@ -115,4 +117,4 @@ private fun messageStateService(database: Database): MessageStateService {
 }
 
 private fun messageReceiver(kafkaReceiver: KafkaReceiver<String, ByteArray>): MessageReceiver =
-    MessageReceiver(kafkaReceiver)
+    MessageReceiver(config().kafka.topics.dialogMessageOut, kafkaReceiver)

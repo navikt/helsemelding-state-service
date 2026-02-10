@@ -1,14 +1,27 @@
 package no.nav.helsemelding.state.service
 
+import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.left
+import arrow.core.raise.either
 import arrow.core.raise.recover
+import arrow.core.right
 import arrow.fx.coroutines.parMap
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import no.nav.helsemelding.ediadapter.client.EdiAdapterClient
+import no.nav.helsemelding.ediadapter.model.ApprecInfo
+import no.nav.helsemelding.ediadapter.model.ErrorMessage
 import no.nav.helsemelding.ediadapter.model.StatusInfo
+import no.nav.helsemelding.state.EdiAdapterError.FetchFailure
+import no.nav.helsemelding.state.EdiAdapterError.NoApprecReturned
+import no.nav.helsemelding.state.PublishError
 import no.nav.helsemelding.state.StateError
+import no.nav.helsemelding.state.StateTransitionError
 import no.nav.helsemelding.state.config
 import no.nav.helsemelding.state.model.AppRecStatus
+import no.nav.helsemelding.state.model.ApprecStatusMessage
+import no.nav.helsemelding.state.model.DeliveryEvaluationState
 import no.nav.helsemelding.state.model.ExternalDeliveryState
 import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageDeliveryState.COMPLETED
@@ -18,6 +31,7 @@ import no.nav.helsemelding.state.model.MessageDeliveryState.PENDING
 import no.nav.helsemelding.state.model.MessageDeliveryState.REJECTED
 import no.nav.helsemelding.state.model.MessageDeliveryState.UNCHANGED
 import no.nav.helsemelding.state.model.MessageState
+import no.nav.helsemelding.state.model.TransportStatusMessage
 import no.nav.helsemelding.state.model.UpdateState
 import no.nav.helsemelding.state.model.formatExternal
 import no.nav.helsemelding.state.model.formatInvalidState
@@ -25,10 +39,14 @@ import no.nav.helsemelding.state.model.formatNew
 import no.nav.helsemelding.state.model.formatTransition
 import no.nav.helsemelding.state.model.formatUnchanged
 import no.nav.helsemelding.state.model.logPrefix
-import no.nav.helsemelding.state.publisher.MessagePublisher
+import no.nav.helsemelding.state.model.toJson
+import no.nav.helsemelding.state.publisher.StatusMessagePublisher
 import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.translate
 import no.nav.helsemelding.state.withMessageContext
+import org.apache.kafka.clients.producer.RecordMetadata
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 private val log = ExtendedLogger(KotlinLogging.logger {})
 
@@ -36,7 +54,7 @@ class PollerService(
     private val ediAdapterClient: EdiAdapterClient,
     private val messageStateService: MessageStateService,
     private val stateEvaluatorService: StateEvaluatorService,
-    private val dialogMessagePublisher: MessagePublisher
+    private val statusMessagePublisher: StatusMessagePublisher
 ) {
     private val pollerConfig = config().poller
 
@@ -66,17 +84,16 @@ class PollerService(
         }
     }
 
-    internal suspend fun pollAndProcessMessage(message: MessageState) =
-        with(stateEvaluatorService) {
-            log.debug { "${message.logPrefix()} Fetching status from EDI Adapter" }
+    internal suspend fun pollAndProcessMessage(message: MessageState): Either<ErrorMessage, List<StatusInfo>> {
+        log.debug { "${message.logPrefix()} Fetching status from EDI Adapter" }
 
-            ediAdapterClient.getMessageStatus(message.externalRefId)
-                .onRight { statuses ->
-                    log.debug { "${message.logPrefix()} Received ${statuses.size} statuses" }
-                    processMessage(statuses, message)
-                }
-                .onLeft { error -> log.error { "${message.logPrefix()} Error fetching status: $error" } }
-        }
+        return ediAdapterClient.getMessageStatus(message.externalRefId)
+            .onRight { statuses ->
+                log.debug { "${message.logPrefix()} Received ${statuses.size} statuses" }
+                processMessage(statuses, message)
+            }
+            .onLeft { error -> log.error { "${message.logPrefix()} Error fetching status: $error" } }
+    }
 
     private suspend fun processMessage(
         externalStatuses: List<StatusInfo>?,
@@ -120,16 +137,12 @@ class PollerService(
     ): MessageDeliveryState =
         with(stateEvaluatorService) {
             recover({
-                val oldState = evaluate(message)
-                val newState = evaluate(externalDeliveryState, appRecStatus)
+                val old = evaluate(message)
+                val new = evaluate(externalDeliveryState, appRecStatus)
 
-                log.debug { "${message.logPrefix()} Evaluated state: old=$oldState, new=$newState" }
-
-                determineNextState(oldState, newState)
-            }) { e: StateError ->
-                log.error {
-                    "Failed evaluating state: ${e.withMessageContext(message)}"
-                }
+                determineNextState(old, new).withLogging(message, old, new)
+            }) { e: StateTransitionError ->
+                log.error { "Failed evaluating state: ${e.withMessageContext(message)}" }
                 INVALID
             }
         }
@@ -169,7 +182,7 @@ class PollerService(
             )
         )
 
-        dialogMessagePublisher.publish(message.externalRefId, newAppRecStatus!!.name)
+        publishApprecStatus(message)
     }
 
     private suspend fun rejected(
@@ -189,7 +202,86 @@ class PollerService(
             )
         )
 
-        dialogMessagePublisher.publish(message.externalRefId, "")
+        publishTransportStatus(message.id, newState)
+    }
+
+    private suspend fun publishApprecStatus(message: MessageState): Either<StateError, RecordMetadata> =
+        either {
+            val apprecInfo = fetchApprecInfo(message).bind()
+            publishApprecStatus(message.id, apprecInfo).bind()
+        }
+            .onLeft { error ->
+                when (error) {
+                    is PublishError.Failure ->
+                        log.error(error.cause) { error.withMessageContext(message) }
+
+                    else -> log.error { error.withMessageContext(message) }
+                }
+            }
+
+    private suspend fun fetchApprecInfo(
+        message: MessageState
+    ): Either<StateError, ApprecInfo> =
+        ediAdapterClient.getApprecInfo(message.externalRefId)
+            .mapLeft { FetchFailure(message.externalRefId, it) }
+            .flatMap { apprecs ->
+                apprecs.lastOrNull()
+                    ?.right()
+                    ?: NoApprecReturned(message.externalRefId).left()
+            }
+
+    private suspend fun publishApprecStatus(
+        messageId: Uuid,
+        apprecInfo: ApprecInfo
+    ): Either<PublishError, RecordMetadata> =
+        statusMessagePublisher.publish(
+            messageId,
+            apprecStatusMessage(messageId, apprecInfo).toJson()
+        )
+
+    private suspend fun publishTransportStatus(
+        messageId: Uuid,
+        deliveryState: ExternalDeliveryState
+    ): Either<PublishError, RecordMetadata> =
+        statusMessagePublisher.publish(
+            messageId,
+            transportStatusMessage(messageId, deliveryState).toJson()
+        )
+
+    private fun transportStatusMessage(
+        messageId: Uuid,
+        deliveryState: ExternalDeliveryState
+    ): TransportStatusMessage =
+        TransportStatusMessage(
+            messageId = messageId,
+            timestamp = Clock.System.now(),
+            error = TransportStatusMessage.TransportError(
+                code = deliveryState.name,
+                details = "Transport failed for messageId=$messageId:  ${deliveryState.name}"
+            )
+        )
+
+    private fun apprecStatusMessage(
+        messageId: Uuid,
+        apprecInfo: ApprecInfo
+    ): ApprecStatusMessage =
+        ApprecStatusMessage(
+            messageId = messageId,
+            timestamp = Clock.System.now(),
+            apprec = apprecInfo
+        )
+
+    private fun MessageDeliveryState.withLogging(
+        message: MessageState,
+        oldEvaluationState: DeliveryEvaluationState,
+        newEvaluationState: DeliveryEvaluationState
+    ): MessageDeliveryState = also { nextState ->
+        log.debug {
+            "${message.logPrefix()} Evaluated state: " +
+                "old=(${oldEvaluationState.transport}, appRec=${oldEvaluationState.appRec}), " +
+                "new=(${newEvaluationState.transport}, appRec=${newEvaluationState.appRec}), " +
+                "next=$nextState"
+        }
     }
 
     private fun List<MessageState>.withLogging(): List<MessageState> = also {
