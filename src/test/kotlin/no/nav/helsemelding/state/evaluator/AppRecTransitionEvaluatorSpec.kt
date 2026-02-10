@@ -56,6 +56,16 @@ class AppRecTransitionEvaluatorSpec : StringSpec(
             }
         }
 
+        "OK → OK_ERROR_IN_MESSAGE_PART is illegal" {
+            val result = either { with(evaluator) { evaluate(OK, OK_ERROR_IN_MESSAGE_PART) } }
+
+            result shouldBeLeftWhere {
+                it is StateTransitionError.IllegalAppRecTransition &&
+                    it.from == OK &&
+                    it.to == OK_ERROR_IN_MESSAGE_PART
+            }
+        }
+
         "OK → REJECTED is illegal" {
             val result = either { with(evaluator) { evaluate(OK, REJECTED) } }
 
@@ -75,6 +85,16 @@ class AppRecTransitionEvaluatorSpec : StringSpec(
                 it is StateTransitionError.IllegalAppRecTransition &&
                     it.from == OK_ERROR_IN_MESSAGE_PART &&
                     it.to == OK
+            }
+        }
+
+        "OK_ERROR_IN_MESSAGE_PART → REJECTED is illegal" {
+            val result = either { with(evaluator) { evaluate(OK_ERROR_IN_MESSAGE_PART, REJECTED) } }
+
+            result shouldBeLeftWhere {
+                it is StateTransitionError.IllegalAppRecTransition &&
+                    it.from == OK_ERROR_IN_MESSAGE_PART &&
+                    it.to == REJECTED
             }
         }
 
