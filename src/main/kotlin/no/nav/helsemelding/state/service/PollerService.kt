@@ -17,9 +17,11 @@ import no.nav.helsemelding.state.EdiAdapterError.FetchFailure
 import no.nav.helsemelding.state.EdiAdapterError.NoApprecReturned
 import no.nav.helsemelding.state.PublishError
 import no.nav.helsemelding.state.StateError
+import no.nav.helsemelding.state.StateTransitionError
 import no.nav.helsemelding.state.config
 import no.nav.helsemelding.state.model.AppRecStatus
 import no.nav.helsemelding.state.model.ApprecStatusMessage
+import no.nav.helsemelding.state.model.DeliveryEvaluationState
 import no.nav.helsemelding.state.model.ExternalDeliveryState
 import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageDeliveryState.COMPLETED
@@ -134,16 +136,12 @@ class PollerService(
     ): MessageDeliveryState =
         with(stateEvaluatorService) {
             recover({
-                val oldState = evaluate(message)
-                val newState = evaluate(externalDeliveryState, appRecStatus)
+                val old = evaluate(message)
+                val new = evaluate(externalDeliveryState, appRecStatus)
 
-                log.debug { "${message.logPrefix()} Evaluated state: old=$oldState, new=$newState" }
-
-                determineNextState(oldState, newState)
-            }) { e: StateError ->
-                log.error {
-                    "Failed evaluating state: ${e.withMessageContext(message)}"
-                }
+                determineNextState(old, new).withLogging(message, old, new)
+            }) { e: StateTransitionError ->
+                log.error { "Failed evaluating state: ${e.withMessageContext(message)}" }
                 INVALID
             }
         }
@@ -271,6 +269,19 @@ class PollerService(
             timestamp = Clock.System.now(),
             apprec = apprecInfo
         )
+
+    private fun MessageDeliveryState.withLogging(
+        message: MessageState,
+        oldEvaluationState: DeliveryEvaluationState,
+        newEvaluationState: DeliveryEvaluationState
+    ): MessageDeliveryState = also { nextState ->
+        log.debug {
+            "${message.logPrefix()} Evaluated state: " +
+                "old=(${oldEvaluationState.transport}, appRec=${oldEvaluationState.appRec}), " +
+                "new=(${newEvaluationState.transport}, appRec=${newEvaluationState.appRec}), " +
+                "next=$nextState"
+        }
+    }
 
     private fun List<MessageState>.withLogging(): List<MessageState> = also {
         log.info { "Pollable messages size=$size" }
