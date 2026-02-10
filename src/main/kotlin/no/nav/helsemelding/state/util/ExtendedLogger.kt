@@ -2,12 +2,10 @@ package no.nav.helsemelding.state.util
 
 import io.github.oshai.kotlinlogging.KLogger
 import io.opentelemetry.api.trace.Span
-import io.opentelemetry.instrumentation.annotations.WithSpan
 import org.slf4j.MDC
 
 class ExtendedLogger(private val logger: KLogger) {
 
-    @WithSpan("extendedlogger.debug")
     fun debug(msg: () -> Any?) {
         val ctx = Span.current().spanContext
         MDC.putCloseable("trace_id", ctx.traceId).use {
@@ -15,7 +13,6 @@ class ExtendedLogger(private val logger: KLogger) {
         }
     }
 
-    @WithSpan("extendedlogger.info")
     fun info(msg: () -> Any?) {
         val ctx = Span.current().spanContext
         MDC.putCloseable("trace_id", ctx.traceId).use {
@@ -23,7 +20,6 @@ class ExtendedLogger(private val logger: KLogger) {
         }
     }
 
-    @WithSpan("extendedlogger.warn")
     fun warn(msg: () -> Any?) {
         val ctx = Span.current().spanContext
         MDC.putCloseable("trace_id", ctx.traceId).use {
@@ -31,7 +27,6 @@ class ExtendedLogger(private val logger: KLogger) {
         }
     }
 
-    @WithSpan("extendedlogger.error")
     fun error(msg: () -> Any?) {
         val ctx = Span.current().spanContext
         MDC.putCloseable("trace_id", ctx.traceId).use {
@@ -39,7 +34,6 @@ class ExtendedLogger(private val logger: KLogger) {
         }
     }
 
-    @WithSpan("extendedlogger.error")
     fun error(err: Throwable?, msg: () -> Any?) {
         val ctx = Span.current().spanContext
         MDC.putCloseable("trace_id", ctx.traceId).use {
