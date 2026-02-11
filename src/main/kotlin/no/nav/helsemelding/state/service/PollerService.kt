@@ -9,10 +9,7 @@ import arrow.core.right
 import arrow.fx.coroutines.parMap
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.opentelemetry.api.GlobalOpenTelemetry
-import io.opentelemetry.context.Context
-import io.opentelemetry.extension.kotlin.asContextElement
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.helsemelding.ediadapter.client.EdiAdapterClient
 import no.nav.helsemelding.ediadapter.model.ApprecInfo
 import no.nav.helsemelding.ediadapter.model.ErrorMessage
@@ -47,6 +44,7 @@ import no.nav.helsemelding.state.model.toJson
 import no.nav.helsemelding.state.publisher.StatusMessagePublisher
 import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.translate
+import no.nav.helsemelding.state.util.withSpan
 import no.nav.helsemelding.state.withMessageContext
 import org.apache.kafka.clients.producer.RecordMetadata
 import kotlin.time.Clock
@@ -90,10 +88,7 @@ class PollerService(
     }
 
     internal suspend fun pollAndProcessMessage(message: MessageState): Either<ErrorMessage, List<StatusInfo>> {
-        val span = tracer.spanBuilder("Poll and process message").startSpan()
-        val otelContext = Context.current().with(span)
-
-        return withContext(otelContext.asContextElement()) {
+        return tracer.withSpan("Poll and process message") {
             log.debug { "${message.logPrefix()} Fetching status from EDI Adapter" }
 
             ediAdapterClient.getMessageStatus(message.externalRefId)
