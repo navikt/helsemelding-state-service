@@ -50,7 +50,7 @@ import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 private val log = ExtendedLogger(KotlinLogging.logger {})
-private val tracer = GlobalOpenTelemetry.getTracer("message-status-check")
+private val tracer = GlobalOpenTelemetry.getTracer("PollerService")
 
 class PollerService(
     private val ediAdapterClient: EdiAdapterClient,

@@ -27,7 +27,7 @@ import kotlin.io.encoding.Base64
 import kotlin.uuid.Uuid
 
 private val log = ExtendedLogger(KotlinLogging.logger {})
-private val tracer = GlobalOpenTelemetry.getTracer("message-processing")
+private val tracer = GlobalOpenTelemetry.getTracer("MessageProcessor")
 
 const val BASE64_ENCODING = "base64"
 
