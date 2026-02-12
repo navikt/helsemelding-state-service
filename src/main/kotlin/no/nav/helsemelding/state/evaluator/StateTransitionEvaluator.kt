@@ -10,7 +10,7 @@ import no.nav.helsemelding.state.model.resolveDelivery
 /**
  * Evaluates whether a transition between two **multi-axis delivery states**
  * is permitted. This evaluator coordinates validation across the transport
- * and application receipt axes and ensures that the resolved
+ * and application receipt (apprec) axes and ensures that the resolved
  * lifecycle state (`MessageDeliveryState`) progresses legally.
  *
  * This evaluator **does not derive** lifecycle states itself. The caller must
