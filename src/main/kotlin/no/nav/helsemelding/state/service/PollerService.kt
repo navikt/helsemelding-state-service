@@ -144,7 +144,7 @@ class PollerService(
                 determineNextState(old, new).withLogging(message, old, new)
             }) { e: StateTransitionError ->
                 log.error { "Failed evaluating state: ${e.withMessageContext(message)}" }
-                NextStateDecision.Unchanged
+                NextStateDecision.Transition(INVALID)
             }
         }
 
