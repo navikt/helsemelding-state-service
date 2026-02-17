@@ -21,13 +21,12 @@ import no.nav.helsemelding.state.model.DialogMessage
 import no.nav.helsemelding.state.model.MessageType.DIALOG
 import no.nav.helsemelding.state.receiver.MessageReceiver
 import no.nav.helsemelding.state.service.MessageStateService
-import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.withSpan
 import java.net.URI
 import kotlin.io.encoding.Base64
 import kotlin.uuid.Uuid
 
-private val log = ExtendedLogger(KotlinLogging.logger {})
+private val log = KotlinLogging.logger {}
 private val tracer = GlobalOpenTelemetry.getTracer("MessageProcessor")
 
 const val BASE64_ENCODING = "base64"
@@ -48,6 +47,7 @@ class MessageProcessor(
 
     internal suspend fun processAndSendMessage(dialogMessage: DialogMessage) {
         tracer.withSpan("Process and send message") {
+            log.info { "dialogMessageId=${dialogMessage.id} Processing started" }
             payloadSigningClient.signPayload(PayloadRequest(OUT, dialogMessage.payload))
                 .onRight { payloadResponse ->
                     log.info { "dialogMessageId=${dialogMessage.id} Successfully signed" }

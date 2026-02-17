@@ -41,7 +41,6 @@ import no.nav.helsemelding.state.model.formatUnchanged
 import no.nav.helsemelding.state.model.logPrefix
 import no.nav.helsemelding.state.model.toJson
 import no.nav.helsemelding.state.publisher.StatusMessagePublisher
-import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.translate
 import no.nav.helsemelding.state.util.withSpan
 import no.nav.helsemelding.state.withMessageContext
@@ -49,7 +48,7 @@ import org.apache.kafka.clients.producer.RecordMetadata
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
-private val log = ExtendedLogger(KotlinLogging.logger {})
+private val log = KotlinLogging.logger {}
 private val tracer = GlobalOpenTelemetry.getTracer("PollerService")
 
 class PollerService(
