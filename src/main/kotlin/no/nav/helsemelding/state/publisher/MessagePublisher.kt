@@ -7,14 +7,13 @@ import io.github.nomisRev.kafka.publisher.KafkaPublisher
 import io.github.oshai.kotlinlogging.KotlinLogging
 import no.nav.helsemelding.state.PublishError
 import no.nav.helsemelding.state.config
-import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.toEither
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
 import kotlin.uuid.Uuid
 
-private val log = ExtendedLogger(KotlinLogging.logger {})
+private val log = KotlinLogging.logger {}
 
 typealias DialogMessagePublisher = MessagePublisher
 typealias StatusMessagePublisher = MessagePublisher

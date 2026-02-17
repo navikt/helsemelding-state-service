@@ -29,11 +29,10 @@ import no.nav.helsemelding.state.service.MessageStateService
 import no.nav.helsemelding.state.service.PollerService
 import no.nav.helsemelding.state.service.StateEvaluatorService
 import no.nav.helsemelding.state.service.TransactionalMessageStateService
-import no.nav.helsemelding.state.util.ExtendedLogger
 import no.nav.helsemelding.state.util.coroutineScope
 import org.jetbrains.exposed.v1.jdbc.Database
 
-private val log = ExtendedLogger(KotlinLogging.logger {})
+private val log = KotlinLogging.logger {}
 
 fun main() = SuspendApp {
     result {
