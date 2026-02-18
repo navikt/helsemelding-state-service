@@ -6,7 +6,7 @@ sealed interface NextStateDecision {
     }
 
     data class Transition(val to: MessageDeliveryState) : NextStateDecision {
-        override fun toString() = "TRANSITION($to)"
+        override fun toString() = to.toString()
     }
 
     sealed interface Pending : NextStateDecision {

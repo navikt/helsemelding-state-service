@@ -20,7 +20,7 @@ data class MessageState(
 
 fun MessageState.formatUnchanged(): String = "${logPrefix()} No state transition (no persisted change)"
 
-fun MessageState.formatNew(): String = "${logPrefix()} Initial internal state: NEW (no external status received yet)"
+fun MessageState.formatNew(): String = "${logPrefix()} Transition → NEW (no external status received yet)"
 
 fun MessageState.formatTransition(to: NextStateDecision): String = "${logPrefix()} Transition → $to"
 
