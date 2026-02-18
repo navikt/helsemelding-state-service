@@ -7,7 +7,6 @@ import no.nav.helsemelding.state.model.AppRecStatus.OK_ERROR_IN_MESSAGE_PART
 import no.nav.helsemelding.state.model.MessageDeliveryState.COMPLETED
 import no.nav.helsemelding.state.model.MessageDeliveryState.INVALID
 import no.nav.helsemelding.state.model.MessageDeliveryState.NEW
-import no.nav.helsemelding.state.model.MessageDeliveryState.PENDING
 import no.nav.helsemelding.state.model.TransportStatus.ACKNOWLEDGED
 
 class DeliveryEvaluationStateSpec : StringSpec(
@@ -27,7 +26,7 @@ class DeliveryEvaluationStateSpec : StringSpec(
 
         "PENDING transport + null apprec → PENDING(WAITING_FOR_TRANSPORT_ACKNOWLEDGEMENT)" {
             toDelivery(TransportStatus.PENDING, null).resolveDelivery().decision shouldBe
-                NextStateDecision.Transition(PENDING)
+                NextStateDecision.Pending.Transport
 
             toDelivery(TransportStatus.PENDING, null).resolveDelivery().pendingReason shouldBe
                 PendingReason.WAITING_FOR_TRANSPORT_ACKNOWLEDGEMENT
@@ -35,7 +34,7 @@ class DeliveryEvaluationStateSpec : StringSpec(
 
         "ACK transport + null apprec → PENDING(WAITING_FOR_APPREC)" {
             toDelivery(ACKNOWLEDGED, null).resolveDelivery().decision shouldBe
-                NextStateDecision.Transition(PENDING)
+                NextStateDecision.Pending.AppRec
 
             toDelivery(ACKNOWLEDGED, null).resolveDelivery().pendingReason shouldBe
                 PendingReason.WAITING_FOR_APPREC

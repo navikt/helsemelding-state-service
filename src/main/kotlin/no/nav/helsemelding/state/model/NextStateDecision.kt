@@ -9,6 +9,16 @@ sealed interface NextStateDecision {
         override fun toString() = "TRANSITION($to)"
     }
 
+    sealed interface Pending : NextStateDecision {
+        data object Transport : Pending {
+            override fun toString() = "PENDING(TRANSPORT)"
+        }
+
+        data object AppRec : Pending {
+            override fun toString() = "PENDING(APPREC)"
+        }
+    }
+
     sealed interface Rejected : NextStateDecision {
         data object Transport : Rejected {
             override fun toString() = "REJECTED(TRANSPORT)"
