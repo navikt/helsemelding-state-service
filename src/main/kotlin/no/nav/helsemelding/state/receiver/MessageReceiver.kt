@@ -7,6 +7,8 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import no.nav.helsemelding.state.metrics.Metrics
 import no.nav.helsemelding.state.model.DialogMessage
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -16,11 +18,13 @@ private val log = KotlinLogging.logger {}
 
 class MessageReceiver(
     private val dialogMessageOutTopic: String,
-    private val kafkaReceiver: KafkaReceiver<String, ByteArray>
+    private val kafkaReceiver: KafkaReceiver<String, ByteArray>,
+    private val metrics: Metrics
 ) {
     fun receiveMessages(): Flow<DialogMessage> = kafkaReceiver
         .receive(dialogMessageOutTopic)
         .filter(::isValidRecordKey)
+        .onEach { metrics.registerOutgoingMessageReceived() }
         .map(::toMessage)
 
     private suspend fun toMessage(record: ReceiverRecord<String, ByteArray>): DialogMessage {
@@ -46,7 +50,7 @@ internal fun isValidRecordKey(record: ReceiverRecord<String, ByteArray>): Boolea
     }
 }
 
-fun fakeMessageReceiver(): MessageReceiver = MessageReceiver(
+fun fakeMessageReceiver(metrics: Metrics): MessageReceiver = MessageReceiver(
     "fake.dialog.topic",
     KafkaReceiver(
         ReceiverSettings(
@@ -55,5 +59,6 @@ fun fakeMessageReceiver(): MessageReceiver = MessageReceiver(
             valueDeserializer = ByteArrayDeserializer(),
             groupId = ""
         )
-    )
+    ),
+    metrics
 )
