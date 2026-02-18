@@ -19,6 +19,7 @@ import no.nav.helsemelding.state.model.MessageDeliveryState.PENDING
 import no.nav.helsemelding.state.model.MessageDeliveryState.REJECTED
 import no.nav.helsemelding.state.model.MessageState
 import no.nav.helsemelding.state.model.MessageType.DIALOG
+import no.nav.helsemelding.state.model.NextStateDecision.Pending
 import no.nav.helsemelding.state.model.NextStateDecision.Transition
 import no.nav.helsemelding.state.model.NextStateDecision.Unchanged
 import no.nav.helsemelding.state.model.TransportStatus
@@ -114,11 +115,18 @@ class StateEvaluatorServiceSpec : StringSpec(
             either { with(service) { determineNextState(old, new) } } shouldBe Right(Unchanged)
         }
 
-        "determineNextState -> new resolved state on valid transition (NEW -> PENDING)" {
+        "determineNextState -> new resolved state on valid transition (NEW -> PENDING(TRANSPORT))" {
             val old = DeliveryEvaluationState(transport = TransportStatus.NEW, appRec = null)
             val new = DeliveryEvaluationState(transport = TransportStatus.PENDING, appRec = null)
 
-            either { with(service) { determineNextState(old, new) } } shouldBe Right(Transition(PENDING))
+            either { with(service) { determineNextState(old, new) } } shouldBe Right(Pending.Transport)
+        }
+
+        "determineNextState -> new resolved state on valid transition (NEW -> PENDING(APPREC))" {
+            val old = DeliveryEvaluationState(transport = TransportStatus.NEW, appRec = null)
+            val new = DeliveryEvaluationState(transport = TransportStatus.ACKNOWLEDGED, appRec = null)
+
+            either { with(service) { determineNextState(old, new) } } shouldBe Right(Pending.AppRec)
         }
 
         "determineNextState -> new resolved state on valid transition (PENDING -> COMPLETED)" {

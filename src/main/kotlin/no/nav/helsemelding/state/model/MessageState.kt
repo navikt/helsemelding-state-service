@@ -1,5 +1,6 @@
 package no.nav.helsemelding.state.model
 
+import no.nav.helsemelding.state.model.NextStateDecision.Transition
 import java.net.URL
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
@@ -21,7 +22,9 @@ fun MessageState.formatUnchanged(): String = "${logPrefix()} No state transition
 
 fun MessageState.formatNew(): String = "${logPrefix()} Initial internal state: NEW (no external status received yet)"
 
-fun MessageState.formatTransition(to: MessageDeliveryState): String = "${logPrefix()} → $to"
+fun MessageState.formatTransition(to: NextStateDecision): String = "${logPrefix()} Transition → $to"
+
+fun MessageState.formatTransition(to: MessageDeliveryState): String = formatTransition(Transition(to))
 
 fun MessageState.formatInvalidState(): String = "${logPrefix()} Entered INVALID state"
 

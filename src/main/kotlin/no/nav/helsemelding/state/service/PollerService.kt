@@ -31,8 +31,7 @@ import no.nav.helsemelding.state.model.MessageDeliveryState.PENDING
 import no.nav.helsemelding.state.model.MessageDeliveryState.REJECTED
 import no.nav.helsemelding.state.model.MessageState
 import no.nav.helsemelding.state.model.NextStateDecision
-import no.nav.helsemelding.state.model.NextStateDecision.Rejected.AppRec
-import no.nav.helsemelding.state.model.NextStateDecision.Rejected.Transport
+import no.nav.helsemelding.state.model.NextStateDecision.Rejected
 import no.nav.helsemelding.state.model.TransportStatusMessage
 import no.nav.helsemelding.state.model.UpdateState
 import no.nav.helsemelding.state.model.formatExternal
@@ -130,14 +129,28 @@ class PollerService(
             is NextStateDecision.Transition ->
                 when (nextDecision.to) {
                     NEW -> log.debug { message.formatNew() }
-                    PENDING -> pending(message, deliveryState, appRecStatus)
                     COMPLETED -> completed(message, deliveryState, appRecStatus)
                     INVALID -> log.error { message.formatInvalidState() }
+                    PENDING -> error("Use NextStateDecision.Pending.Transport/AppRec instead of Transition(PENDING)")
                     REJECTED -> error("Use NextStateDecision.Rejected.Transport/AppRec instead of Transition(REJECTED)")
                 }
 
-            Transport -> rejected(message, deliveryState, Transport)
-            AppRec -> rejected(message, deliveryState, AppRec)
+            is NextStateDecision.Pending -> {
+                log.info { message.formatTransition(nextDecision) }
+                pending(message, deliveryState, appRecStatus)
+            }
+
+            Rejected.AppRec -> {
+                log.warn { message.formatTransition(nextDecision) }
+                rejected(message, deliveryState, appRecStatus)
+                publishApprecStatus(message)
+            }
+
+            Rejected.Transport -> {
+                log.warn { message.formatTransition(nextDecision) }
+                rejected(message, deliveryState, appRecStatus)
+                publishTransportStatus(message.id, deliveryState)
+            }
         }
     }
 
@@ -163,7 +176,6 @@ class PollerService(
         newState: ExternalDeliveryState,
         newAppRecStatus: AppRecStatus?
     ) {
-        log.info { message.formatTransition(PENDING) }
         messageStateService.recordStateChange(
             UpdateState(
                 message.externalRefId,
@@ -199,10 +211,8 @@ class PollerService(
     private suspend fun rejected(
         message: MessageState,
         externalDeliveryState: ExternalDeliveryState,
-        rejected: NextStateDecision.Rejected
+        newAppRecStatus: AppRecStatus?
     ) {
-        log.warn { message.formatTransition(REJECTED) }
-
         messageStateService.recordStateChange(
             UpdateState(
                 message.externalRefId,
@@ -210,14 +220,9 @@ class PollerService(
                 message.externalDeliveryState,
                 externalDeliveryState,
                 message.appRecStatus,
-                message.appRecStatus
+                newAppRecStatus
             )
         )
-
-        when (rejected) {
-            AppRec -> publishApprecStatus(message)
-            Transport -> publishTransportStatus(message.id, externalDeliveryState)
-        }
     }
 
     private suspend fun publishApprecStatus(message: MessageState): Either<StateError, RecordMetadata> =
