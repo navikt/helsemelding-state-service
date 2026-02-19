@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import no.nav.helsemelding.state.metrics.ErrorTypeTag
 import no.nav.helsemelding.state.metrics.Metrics
 import no.nav.helsemelding.state.model.DialogMessage
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
@@ -42,7 +43,7 @@ internal fun isValidRecordKey(
     val key = record.key()
     if (key == null) {
         log.error { "Receiver record key is null. Key should be a valid uuid. Offset: ${record.offset.offset}" }
-        metrics.registerOutgoingMessageFailed("invalid_kafka_key")
+        metrics.registerOutgoingMessageFailed(ErrorTypeTag.INVALID_KAFKA_KEY)
         return false
     }
 
@@ -50,7 +51,7 @@ internal fun isValidRecordKey(
         true
     } else {
         log.error { "Receiver record key: $key is invalid and therefore ignored." }
-        metrics.registerOutgoingMessageFailed("invalid_kafka_key")
+        metrics.registerOutgoingMessageFailed(ErrorTypeTag.INVALID_KAFKA_KEY)
         false
     }
 }

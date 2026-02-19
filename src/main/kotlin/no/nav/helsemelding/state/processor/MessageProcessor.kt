@@ -16,6 +16,7 @@ import no.nav.helsemelding.ediadapter.model.PostMessageRequest
 import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
 import no.nav.helsemelding.payloadsigning.model.Direction.OUT
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
+import no.nav.helsemelding.state.metrics.ErrorTypeTag
 import no.nav.helsemelding.state.metrics.Metrics
 import no.nav.helsemelding.state.model.CreateState
 import no.nav.helsemelding.state.model.DialogMessage
@@ -60,7 +61,7 @@ class MessageProcessor(
                     log.error {
                         "dialogMessageId=${dialogMessage.id} Failed signing message: $error"
                     }
-                    metrics.registerOutgoingMessageFailed("payload_signing_failed")
+                    metrics.registerOutgoingMessageFailed(ErrorTypeTag.PAYLOAD_SIGNING_FAILED)
                 }
         }
     }
@@ -84,7 +85,7 @@ class MessageProcessor(
                 log.error {
                     "dialogMessageId=${dialogMessage.id} Failed sending message to edi adapter: $error"
                 }
-                metrics.registerOutgoingMessageFailed("sending_to_edi_adapter_failed")
+                metrics.registerOutgoingMessageFailed(ErrorTypeTag.SENDING_TO_EDI_ADAPTER_FAILED)
             }
     }
 
@@ -108,7 +109,7 @@ class MessageProcessor(
             log.error {
                 "dialogMessageId=$dialogMessageId Failed initializing state: ${error.stackTraceToString()}"
             }
-            metrics.registerOutgoingMessageFailed("state_initialization_failed")
+            metrics.registerOutgoingMessageFailed(ErrorTypeTag.STATE_INITIALIZATION_FAILED)
         }
     }
 }

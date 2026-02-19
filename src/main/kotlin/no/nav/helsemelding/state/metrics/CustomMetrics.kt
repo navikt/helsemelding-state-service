@@ -8,7 +8,7 @@ private val log = KotlinLogging.logger {}
 
 interface Metrics {
     fun registerOutgoingMessageReceived()
-    fun registerOutgoingMessageFailed(errorType: String)
+    fun registerOutgoingMessageFailed(errorType: ErrorTypeTag)
 }
 
 class CustomMetrics(val registry: MeterRegistry) : Metrics {
@@ -19,10 +19,10 @@ class CustomMetrics(val registry: MeterRegistry) : Metrics {
             .increment()
     }
 
-    override fun registerOutgoingMessageFailed(errorType: String) {
+    override fun registerOutgoingMessageFailed(errorType: ErrorTypeTag) {
         Counter.builder("helsemelding_outgoing_messages_failed")
             .description("Number of outgoing messages that failed to be processed")
-            .tag("errorType", errorType)
+            .tag("errorType", errorType.value)
             .register(registry)
             .increment()
     }
@@ -33,7 +33,7 @@ class FakeMetrics() : Metrics {
         log.info { "helsemelding_outgoing_messages_received metric is registered" }
     }
 
-    override fun registerOutgoingMessageFailed(errorType: String) {
-        log.info { "helsemelding_outgoing_messages_failed metric is registered with errorType: $errorType" }
+    override fun registerOutgoingMessageFailed(errorType: ErrorTypeTag) {
+        log.info { "helsemelding_outgoing_messages_failed metric is registered with errorType: ${errorType.value}" }
     }
 }
