@@ -16,6 +16,7 @@ import no.nav.helsemelding.ediadapter.model.PostMessageRequest
 import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
 import no.nav.helsemelding.payloadsigning.model.Direction.OUT
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
+import no.nav.helsemelding.state.metrics.Metrics
 import no.nav.helsemelding.state.model.CreateState
 import no.nav.helsemelding.state.model.DialogMessage
 import no.nav.helsemelding.state.model.MessageType.DIALOG
@@ -35,7 +36,8 @@ class MessageProcessor(
     private val messageReceiver: MessageReceiver,
     private val messageStateService: MessageStateService,
     private val ediAdapterClient: EdiAdapterClient,
-    private val payloadSigningClient: PayloadSigningClient
+    private val payloadSigningClient: PayloadSigningClient,
+    private val metrics: Metrics
 ) {
     fun processMessages(scope: CoroutineScope): Job =
         messageFlow()
@@ -58,6 +60,7 @@ class MessageProcessor(
                     log.error {
                         "dialogMessageId=${dialogMessage.id} Failed signing message: $error"
                     }
+                    metrics.registerOutgoingMessageFailed("payload_signing_failed")
                 }
         }
     }
@@ -81,23 +84,31 @@ class MessageProcessor(
                 log.error {
                     "dialogMessageId=${dialogMessage.id} Failed sending message to edi adapter: $error"
                 }
+                metrics.registerOutgoingMessageFailed("sending_to_edi_adapter_failed")
             }
     }
 
     private suspend fun initializeState(metadata: Metadata, dialogMessageId: Uuid) {
-        val snapshot = messageStateService.createInitialState(
-            CreateState(
-                id = dialogMessageId,
-                externalRefId = metadata.id,
-                messageType = DIALOG,
-                externalMessageUrl = URI.create(metadata.location).toURL()
+        try {
+            val snapshot = messageStateService.createInitialState(
+                CreateState(
+                    id = dialogMessageId,
+                    externalRefId = metadata.id,
+                    messageType = DIALOG,
+                    externalMessageUrl = URI.create(metadata.location).toURL()
+                )
             )
-        )
 
-        val externalRefId = snapshot.messageState.externalRefId
+            val externalRefId = snapshot.messageState.externalRefId
 
-        log.info {
-            "externalRefId=$externalRefId State initialized (dialogMessageId=$dialogMessageId)"
+            log.info {
+                "externalRefId=$externalRefId State initialized (dialogMessageId=$dialogMessageId)"
+            }
+        } catch (error: Throwable) {
+            log.error {
+                "dialogMessageId=$dialogMessageId Failed initializing state: ${error.stackTraceToString()}"
+            }
+            metrics.registerOutgoingMessageFailed("state_initialization_failed")
         }
     }
 }

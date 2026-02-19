@@ -55,7 +55,8 @@ fun main() = SuspendApp {
                 messageReceiver = messageReceiver(deps.kafkaReceiver, metrics),
                 messageStateService = messageStateService(deps.database),
                 ediAdapterClient = deps.ediAdapterClient,
-                payloadSigningClient = deps.payloadSigningClient
+                payloadSigningClient = deps.payloadSigningClient,
+                metrics = metrics
             )
 
             server(

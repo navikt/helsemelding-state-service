@@ -8,21 +8,32 @@ private val log = KotlinLogging.logger {}
 
 interface Metrics {
     fun registerOutgoingMessageReceived()
+    fun registerOutgoingMessageFailed(errorType: String)
 }
 
-class CustomMetrics(registry: MeterRegistry) : Metrics {
+class CustomMetrics(val registry: MeterRegistry) : Metrics {
     override fun registerOutgoingMessageReceived() {
-        messagesReceived.increment()
+        Counter.builder("helsemelding_outgoing_messages_received")
+            .description("Number of outgoing messages received from Kafka")
+            .register(registry)
+            .increment()
     }
 
-    val messagesReceived: Counter =
-        Counter.builder("helsemelding_outgoing_messages_received")
-            .description("Number of messages received from Kafka")
+    override fun registerOutgoingMessageFailed(errorType: String) {
+        Counter.builder("helsemelding_outgoing_messages_failed")
+            .description("Number of outgoing messages that failed to be processed")
+            .tag("errorType", errorType)
             .register(registry)
+            .increment()
+    }
 }
 
 class FakeMetrics() : Metrics {
     override fun registerOutgoingMessageReceived() {
         log.info { "helsemelding_outgoing_messages_received metric is registered" }
+    }
+
+    override fun registerOutgoingMessageFailed(errorType: String) {
+        log.info { "helsemelding_outgoing_messages_failed metric is registered with errorType: $errorType" }
     }
 }

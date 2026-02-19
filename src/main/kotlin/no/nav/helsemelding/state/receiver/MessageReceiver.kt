@@ -23,7 +23,7 @@ class MessageReceiver(
 ) {
     fun receiveMessages(): Flow<DialogMessage> = kafkaReceiver
         .receive(dialogMessageOutTopic)
-        .filter(::isValidRecordKey)
+        .filter { record -> isValidRecordKey(record, metrics) }
         .onEach { metrics.registerOutgoingMessageReceived() }
         .map(::toMessage)
 
@@ -35,10 +35,14 @@ class MessageReceiver(
     }
 }
 
-internal fun isValidRecordKey(record: ReceiverRecord<String, ByteArray>): Boolean {
+internal fun isValidRecordKey(
+    record: ReceiverRecord<String, ByteArray>,
+    metrics: Metrics
+): Boolean {
     val key = record.key()
     if (key == null) {
         log.error { "Receiver record key is null. Key should be a valid uuid. Offset: ${record.offset.offset}" }
+        metrics.registerOutgoingMessageFailed("invalid_kafka_key")
         return false
     }
 
@@ -46,6 +50,7 @@ internal fun isValidRecordKey(record: ReceiverRecord<String, ByteArray>): Boolea
         true
     } else {
         log.error { "Receiver record key: $key is invalid and therefore ignored." }
+        metrics.registerOutgoingMessageFailed("invalid_kafka_key")
         false
     }
 }

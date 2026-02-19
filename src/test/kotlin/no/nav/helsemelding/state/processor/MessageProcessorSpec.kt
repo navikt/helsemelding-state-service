@@ -26,11 +26,13 @@ class MessageProcessorSpec : StringSpec(
             val messageStateService = FakeTransactionalMessageStateService()
             val ediAdapterClient = FakeEdiAdapterClient()
             val payloadSigningClient = FakePayloadSigningClient()
+            val metrics = FakeMetrics()
             val messageProcessor = MessageProcessor(
-                fakeMessageReceiver(FakeMetrics()),
+                fakeMessageReceiver(metrics),
                 messageStateService,
                 ediAdapterClient,
-                payloadSigningClient
+                payloadSigningClient,
+                metrics
             )
 
             val payload = "data".toByteArray()
@@ -59,11 +61,13 @@ class MessageProcessorSpec : StringSpec(
             val messageStateService = FakeTransactionalMessageStateService()
             val ediAdapterClient = FakeEdiAdapterClient()
             val payloadSigningClient = FakePayloadSigningClient()
+            val metrics = FakeMetrics()
             val messageProcessor = MessageProcessor(
-                fakeMessageReceiver(FakeMetrics()),
+                fakeMessageReceiver(metrics),
                 messageStateService,
                 ediAdapterClient,
-                payloadSigningClient
+                payloadSigningClient,
+                metrics
             )
 
             val payload = "data".toByteArray()
@@ -91,11 +95,13 @@ class MessageProcessorSpec : StringSpec(
             val messageStateService = FakeTransactionalMessageStateService()
             val ediAdapterClient = FakeEdiAdapterClient()
             val payloadSigningClient = FakePayloadSigningClient()
+            val metrics = FakeMetrics()
             val messageProcessor = MessageProcessor(
-                fakeMessageReceiver(FakeMetrics()),
+                fakeMessageReceiver(metrics),
                 messageStateService,
                 ediAdapterClient,
-                payloadSigningClient
+                payloadSigningClient,
+                metrics
             )
 
             val uuid = Uuid.random()
