@@ -22,7 +22,7 @@ class CustomMetrics(val registry: MeterRegistry) : Metrics {
     override fun registerOutgoingMessageFailed(errorType: ErrorTypeTag) {
         Counter.builder("helsemelding_outgoing_messages_failed")
             .description("Number of outgoing messages that failed to be processed")
-            .tag("errorType", errorType.value)
+            .tag("error_type", errorType.value)
             .register(registry)
             .increment()
     }
@@ -34,6 +34,6 @@ class FakeMetrics() : Metrics {
     }
 
     override fun registerOutgoingMessageFailed(errorType: ErrorTypeTag) {
-        log.info { "helsemelding_outgoing_messages_failed metric is registered with errorType: ${errorType.value}" }
+        log.info { "helsemelding_outgoing_messages_failed metric is registered with error_type: ${errorType.value}" }
     }
 }
