@@ -13,6 +13,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.utils.io.CancellationException
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import no.nav.helsemelding.state.evaluator.AppRecTransitionEvaluator
 import no.nav.helsemelding.state.evaluator.StateTransitionEvaluator
 import no.nav.helsemelding.state.evaluator.TransportStatusTranslator
@@ -70,10 +71,12 @@ fun main() = SuspendApp {
 
             schedulePoller(poller)
 
-            scheduleStateDistributionRefresh(
-                messageStateService(deps.database),
-                metrics
-            )
+            scope.launch {
+                scheduleStateDistributionMetricRefresh(
+                    messageStateService(deps.database),
+                    metrics
+                )
+            }
 
             awaitCancellation()
         }
@@ -96,7 +99,7 @@ private suspend fun schedulePoller(pollerService: PollerService): Long {
         .repeat { pollerService.pollMessages() }
 }
 
-private suspend fun scheduleStateDistributionRefresh(
+private suspend fun scheduleStateDistributionMetricRefresh(
     messageStateService: MessageStateService,
     metrics: Metrics
 ): Long {
