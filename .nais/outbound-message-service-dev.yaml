@@ -21,7 +21,7 @@ spec:
       - type: POSTGRES_17
         tier: db-f1-micro
         databases:
-          - name: helsemelding-statedb
+          - name: helsemelding-outbound-message-statedb
             envVarPrefix: POSTGRES
   webproxy: true
   image: {{image}}
