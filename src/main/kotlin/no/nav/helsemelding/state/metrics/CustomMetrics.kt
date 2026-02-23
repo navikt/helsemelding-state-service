@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import no.nav.helsemelding.state.model.MessageDeliveryState
+import no.nav.helsemelding.state.model.ExternalDeliveryState
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
@@ -17,12 +17,12 @@ interface Metrics {
     fun registerPostMessageDuration(durationNanos: Long)
     fun registerMessageSigningDuration(durationNanos: Long)
     fun registerOutgoingMessageProcessingDuration(durationNanos: Long)
-    fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>)
+    fun registerDeliveryStateDistribution(counts: Map<ExternalDeliveryState, Long>)
 }
 
 class CustomMetrics(val registry: MeterRegistry) : Metrics {
-    private val deliveryStateValues: Map<MessageDeliveryState, AtomicLong> =
-        MessageDeliveryState.entries.associateWith { AtomicLong(0) }
+    private val deliveryStateValues: Map<ExternalDeliveryState, AtomicLong> =
+        ExternalDeliveryState.entries.associateWith { AtomicLong(0) }
 
     init {
         deliveryStateValues.forEach { (state, atomic) ->
@@ -72,8 +72,9 @@ class CustomMetrics(val registry: MeterRegistry) : Metrics {
             .record(durationNanos, TimeUnit.NANOSECONDS)
     }
 
-    override fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>) {
-        MessageDeliveryState.entries.forEach { state ->
+    override fun registerDeliveryStateDistribution(counts: Map<ExternalDeliveryState, Long>) {
+        log.debug { "Registering delivery state distribution" }
+        ExternalDeliveryState.entries.forEach { state ->
             deliveryStateValues.getValue(state).set(counts[state] ?: 0L)
         }
     }
@@ -100,7 +101,7 @@ class FakeMetrics() : Metrics {
         log.info { "helsemelding_outgoing_message_processing_duration metric is registered with duration: $durationNanos ns" }
     }
 
-    override fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>) {
+    override fun registerDeliveryStateDistribution(counts: Map<ExternalDeliveryState, Long>) {
         counts.forEach { (state, count) ->
             log.info { "helsemelding_state_distribution metric is updated for state: ${state.name} with count: $count" }
         }

@@ -5,7 +5,6 @@ import no.nav.helsemelding.state.model.AppRecStatus
 import no.nav.helsemelding.state.model.ExternalDeliveryState
 import no.nav.helsemelding.state.model.ExternalDeliveryState.ACKNOWLEDGED
 import no.nav.helsemelding.state.model.ExternalDeliveryState.UNCONFIRMED
-import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageState
 import no.nav.helsemelding.state.model.MessageType
 import no.nav.helsemelding.state.model.isAcknowledged
@@ -88,7 +87,7 @@ interface MessageRepository {
 
     suspend fun markPolled(externalRefIds: List<Uuid>): Int
 
-    suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long>
+    suspend fun countByDeliveryState(): Map<ExternalDeliveryState, Long>
 }
 
 class ExposedMessageRepository(private val database: Database) : MessageRepository {
@@ -158,12 +157,12 @@ class ExposedMessageRepository(private val database: Database) : MessageReposito
         }
     }
 
-    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> = suspendTransaction(database) {
+    override suspend fun countByDeliveryState(): Map<ExternalDeliveryState, Long> = suspendTransaction(database) {
         Messages
             .select(externalDeliveryState, Messages.id.count())
             .groupBy(externalDeliveryState)
             .associate { row ->
-                val state = MessageDeliveryState.valueOf(row[externalDeliveryState].toString())
+                val state = ExternalDeliveryState.valueOf(row[externalDeliveryState].toString())
                 val count = row[Messages.id.count()]
                 state to count
             }
@@ -259,10 +258,9 @@ class FakeMessageRepository : MessageRepository {
         return count
     }
 
-    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> =
+    override suspend fun countByDeliveryState(): Map<ExternalDeliveryState, Long> =
         mapOf(
-            MessageDeliveryState.NEW to 123,
-            MessageDeliveryState.PENDING to 234,
-            MessageDeliveryState.COMPLETED to 345
+            ACKNOWLEDGED to 123,
+            UNCONFIRMED to 234
         )
 }
