@@ -70,6 +70,11 @@ fun main() = SuspendApp {
 
             schedulePoller(poller)
 
+            scheduleStateDistributionRefresh(
+                messageStateService(deps.database),
+                metrics
+            )
+
             awaitCancellation()
         }
     }
@@ -89,6 +94,18 @@ private suspend fun schedulePoller(pollerService: PollerService): Long {
     return Schedule
         .spaced<Unit>(config().poller.scheduleInterval)
         .repeat { pollerService.pollMessages() }
+}
+
+private suspend fun scheduleStateDistributionRefresh(
+    messageStateService: MessageStateService,
+    metrics: Metrics
+): Long {
+    return Schedule
+        .spaced<Unit>(config().metrics.metricsUpdatingInterval)
+        .repeat {
+            val counts = messageStateService.countByDeliveryState()
+            metrics.registerDeliveryStateDistribution(counts)
+        }
 }
 
 private fun logError(t: Throwable) = log.error { "Shutdown state-service due to: ${t.stackTraceToString()}" }

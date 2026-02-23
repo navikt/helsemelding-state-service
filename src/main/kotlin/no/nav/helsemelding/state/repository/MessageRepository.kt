@@ -5,6 +5,7 @@ import no.nav.helsemelding.state.model.AppRecStatus
 import no.nav.helsemelding.state.model.ExternalDeliveryState
 import no.nav.helsemelding.state.model.ExternalDeliveryState.ACKNOWLEDGED
 import no.nav.helsemelding.state.model.ExternalDeliveryState.UNCONFIRMED
+import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageState
 import no.nav.helsemelding.state.model.MessageType
 import no.nav.helsemelding.state.model.isAcknowledged
@@ -20,6 +21,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder.ASC_NULLS_FIRST
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
@@ -28,6 +30,7 @@ import org.jetbrains.exposed.v1.datetime.CurrentTimestamp
 import org.jetbrains.exposed.v1.datetime.timestamp
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertReturning
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -84,6 +87,8 @@ interface MessageRepository {
     suspend fun findForPolling(): List<MessageState>
 
     suspend fun markPolled(externalRefIds: List<Uuid>): Int
+
+    suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long>
 }
 
 class ExposedMessageRepository(private val database: Database) : MessageRepository {
@@ -151,6 +156,17 @@ class ExposedMessageRepository(private val database: Database) : MessageReposito
         Messages.update({ Messages.externalRefId inList externalRefIds }) {
             it[lastPolledAt] = CurrentTimestamp
         }
+    }
+
+    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> = suspendTransaction(database) {
+        Messages
+            .select(externalDeliveryState, Messages.id.count())
+            .groupBy(externalDeliveryState)
+            .associate { row ->
+                val state = MessageDeliveryState.valueOf(row[externalDeliveryState].toString())
+                val count = row[Messages.id.count()]
+                state to count
+            }
     }
 
     private fun ResultRow.toMessageState() = MessageState(
@@ -242,4 +258,11 @@ class FakeMessageRepository : MessageRepository {
         }
         return count
     }
+
+    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> =
+        mapOf(
+            MessageDeliveryState.NEW to 123,
+            MessageDeliveryState.PENDING to 234,
+            MessageDeliveryState.COMPLETED to 345
+        )
 }

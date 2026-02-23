@@ -1,6 +1,7 @@
 package no.nav.helsemelding.state.service
 
 import no.nav.helsemelding.state.model.CreateState
+import no.nav.helsemelding.state.model.MessageDeliveryState
 import no.nav.helsemelding.state.model.MessageState
 import no.nav.helsemelding.state.model.MessageStateSnapshot
 import no.nav.helsemelding.state.model.UpdateState
@@ -132,6 +133,19 @@ interface MessageStateService {
      * @return number of messages marked as polled.
      */
     suspend fun markAsPolled(externalRefIds: List<Uuid>): Int
+
+    /**
+     * Counts the number of messages in each delivery state.
+     *
+     * This function performs an aggregation query to determine how many messages are currently
+     * in each [MessageDeliveryState]. It is used for monitoring and reporting purposes
+     *
+     * The returned map includes all delivery states as keys, even those with zero counts, to
+     * provide a complete picture of the current state distribution.
+     *
+     * @return a map where each key is a [MessageDeliveryState] and its corresponding value is the count of messages in that state.
+     */
+    suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long>
 }
 
 class TransactionalMessageStateService(
@@ -154,6 +168,11 @@ class TransactionalMessageStateService(
     override suspend fun findPollableMessages(): List<MessageState> = messageRepository.findForPolling()
 
     override suspend fun markAsPolled(externalRefIds: List<Uuid>): Int = messageRepository.markPolled(externalRefIds)
+
+    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> {
+        val messagesCountByState = messageRepository.countByDeliveryState()
+        return MessageDeliveryState.entries.associateWith { messagesCountByState[it] ?: 0L }
+    }
 }
 
 class FakeTransactionalMessageStateService() : MessageStateService {
@@ -186,4 +205,7 @@ class FakeTransactionalMessageStateService() : MessageStateService {
 
     override suspend fun markAsPolled(externalRefIds: List<Uuid>): Int =
         transactionalMessageStateService.markAsPolled(externalRefIds)
+
+    override suspend fun countByDeliveryState(): Map<MessageDeliveryState, Long> =
+        messageRepository.countByDeliveryState()
 }

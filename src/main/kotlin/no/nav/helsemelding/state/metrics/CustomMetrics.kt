@@ -2,9 +2,12 @@ package no.nav.helsemelding.state.metrics
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
+import no.nav.helsemelding.state.model.MessageDeliveryState
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 private val log = KotlinLogging.logger {}
 
@@ -14,9 +17,22 @@ interface Metrics {
     fun registerPostMessageDuration(durationNanos: Long)
     fun registerMessageSigningDuration(durationNanos: Long)
     fun registerOutgoingMessageProcessingDuration(durationNanos: Long)
+    fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>)
 }
 
 class CustomMetrics(val registry: MeterRegistry) : Metrics {
+    private val deliveryStateValues: Map<MessageDeliveryState, AtomicLong> =
+        MessageDeliveryState.entries.associateWith { AtomicLong(0) }
+
+    init {
+        deliveryStateValues.forEach { (state, atomic) ->
+            Gauge.builder("helsemelding_delivery_state_distribution") { atomic.get().toDouble() }
+                .description("Current number of messages in each delivery state")
+                .tag("state", state.name)
+                .register(registry)
+        }
+    }
+
     override fun registerOutgoingMessageReceived() {
         Counter.builder("helsemelding_outgoing_messages_received")
             .description("Number of outgoing messages received from Kafka")
@@ -55,6 +71,12 @@ class CustomMetrics(val registry: MeterRegistry) : Metrics {
             .register(registry)
             .record(durationNanos, TimeUnit.NANOSECONDS)
     }
+
+    override fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>) {
+        MessageDeliveryState.entries.forEach { state ->
+            deliveryStateValues.getValue(state).set(counts[state] ?: 0L)
+        }
+    }
 }
 
 class FakeMetrics() : Metrics {
@@ -76,5 +98,11 @@ class FakeMetrics() : Metrics {
 
     override fun registerOutgoingMessageProcessingDuration(durationNanos: Long) {
         log.info { "helsemelding_outgoing_message_processing_duration metric is registered with duration: $durationNanos ns" }
+    }
+
+    override fun registerDeliveryStateDistribution(counts: Map<MessageDeliveryState, Long>) {
+        counts.forEach { (state, count) ->
+            log.info { "helsemelding_state_distribution metric is updated for state: ${state.name} with count: $count" }
+        }
     }
 }
