@@ -70,7 +70,7 @@ fun main() = SuspendApp {
             log.debug { "Matrics debug 1" }
             messageProcessor.processMessages(scope)
             log.debug { "Matrics debug 2" }
-            schedulePoller(poller)
+            scope.launch { schedulePoller(poller) }
             log.debug { "Matrics debug 3" }
             scope.launch {
                 scheduleStateDistributionMetricRefresh(
