@@ -67,17 +67,18 @@ fun main() = SuspendApp {
                 module = stateServiceModule(deps.meterRegistry)
             )
 
+            log.debug { "Matrics debug 1" }
             messageProcessor.processMessages(scope)
-
+            log.debug { "Matrics debug 2" }
             schedulePoller(poller)
-
+            log.debug { "Matrics debug 3" }
             scope.launch {
                 scheduleStateDistributionMetricRefresh(
                     messageStateService(deps.database),
                     metrics
                 )
             }
-
+            log.debug { "Matrics debug 4" }
             awaitCancellation()
         }
     }
