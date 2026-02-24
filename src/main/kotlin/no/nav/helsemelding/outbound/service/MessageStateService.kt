@@ -156,7 +156,7 @@ class TransactionalMessageStateService(
     override suspend fun markAsPolled(externalRefIds: List<Uuid>): Int = messageRepository.markPolled(externalRefIds)
 }
 
-class FakeTransactionalMessageStateService() : MessageStateService {
+class FakeTransactionalMessageStateService : MessageStateService {
     private val messageRepository = FakeMessageRepository()
     private val historyRepository = FakeMessageStateHistoryRepository()
     private val transactionRepository =
