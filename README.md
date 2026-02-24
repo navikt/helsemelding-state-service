@@ -1,7 +1,18 @@
-# State Service
+# helsemelding-outbound-message-service
 
-The **state-service** is responsible for tracking the lifecycle of outgoing messages sent via the `edi-adapter`.  
+The **outbound-message-service** is responsible for tracking the lifecycle of outgoing messages sent via the `edi-adapter`.
 It maintains local state, polls the external system for updates, evaluates domain state transitions, and publishes application receipts when transitions complete.
+
+## Service Rationale
+The primary goal of the outbound-message-service is to guarantee reliable delivery of outbound messages and to produce a verifiable final delivery outcome for 
+each message. Regardless of whether the resolution happens at the transport layer or the application layer, every outbound message ends with a single authoritative 
+final state published back into the domain. 
+
+## Why Transport vs. AppRec Are Split
+Transport- and application-layer processing represent different concerns but are coupled by the external system's guarantees. If a message is transport-confirmed, 
+the external system guarantees that an AppRec will be produced for it — but that AppRec may indicate either success or rejection. Conversely, if transport fails, 
+no AppRec will be generated. Splitting pending and rejected states by layer makes it explicit which part of the flow has completed and avoids misinterpreting 
+transport success as application-level success.
 
 The service is structured around three core components:
 
@@ -9,7 +20,7 @@ The service is structured around three core components:
 
 ## 1. Message Consumption & Initial State Registration
 
-Messages are consumed from Kafka (starting with **dialog messages**, but the system is designed to support additional message types).  
+Messages are consumed from Kafka (starting with **dialog messages**, but the system is designed to support additional message types).
 Each message type is expected to have its own topic.
 
 For each consumed message:
@@ -52,7 +63,6 @@ NEW → PENDING → COMPLETED
 ↘
 REJECTED
 
-
 Examples:
 
 - `ACKNOWLEDGED + null` → `PENDING`
@@ -66,43 +76,76 @@ Illegal combinations (e.g., `UNCONFIRMED + REJECTED`) result in an `Unresolvable
 
 The `StateTransitionValidator` ensures transitions follow defined business rules.
 
-Valid transitions include:
-
 ### 🧠 Transition Matrix
 
-| **From ↓ / To →** | **NEW** | **PENDING** | **COMPLETED** | **REJECTED** | **INVALID** |
-|-------------------|---------|-------------|---------------|--------------|-------------|
-| **NEW**           | =       | ✔           | ❌            | ✔            | ❌          |
-| **PENDING**       | ❌      | =           | ✔             | ✔            | ❌          |
-| **COMPLETED** 🚫  | ❌      | ❌          | =             | ❌           | ❌          |
-| **REJECTED** 🚫   | ❌      | ❌          | ❌            | =            | ❌          |
-| **INVALID** 🚫    | ❌      | ❌          | ❌            | ❌           | =           |
+Outbound tracking distinguishes between *transport-layer* and *application-layer* pending and rejected states.
+
+The domain-level states therefore expand as follows:
+
+* **PENDING (TRANSPORT)** — awaiting transport confirmation
+* **PENDING (APPREC)** — transport confirmed, awaiting AppRec
+* **REJECTED (TRANSPORT)** — transport-layer failure or terminal error
+* **REJECTED (APPREC)** — application-level rejection
+
+| **From ↓ / To →**           | **NEW** | **PENDING (TRANSPORT)** | **PENDING (APPREC)** | **COMPLETED** | **REJECTED (TRANSPORT)** | **REJECTED (APPREC)** | **INVALID** |
+| --------------------------- | ------- | ----------------------- | -------------------- | ------------- | ------------------------ | --------------------- | ----------- |
+| **NEW**                     | =       | ✔                       | ✔                    | ❌             | ✔                        | ✔                     | ❌           |
+| **PENDING (TRANSPORT)**     | ❌       | =                       | ✔                    | ✔             | ✔                        | ✔                     | ❌           |
+| **PENDING (APPREC)**        | ❌       | ❌                       | =                    | ✔             | ✔                        | ✔                     | ❌           |
+| **COMPLETED** 🚫            | ❌       | ❌                       | ❌                    | =             | ❌                        | ❌                     | ❌           |
+| **REJECTED (TRANSPORT)** 🚫 | ❌       | ❌                       | ❌                    | ❌             | =                        | ❌                     | ❌           |
+| **REJECTED (APPREC)** 🚫    | ❌       | ❌                       | ❌                    | ❌             | ❌                        | =                     | ❌           |
+| **INVALID** 🚫              | ❌       | ❌                       | ❌                    | ❌             | ❌                        | ❌                     | =           |
 
 ---
 
 ### ✔ Notes on Specific States
 
-#### NEW → PENDING
+#### NEW → PENDING (TRANSPORT) / PENDING (APPREC)
+
 Occurs when the external system acknowledges receiving the message.
 
-#### NEW → REJECTED
-Represents an immediate negative outcome before processing begins.
+* Transport acknowledged → **PENDING (TRANSPORT)**
+* Transport confirmed but AppRec pending → **PENDING (APPREC)**
 
-#### PENDING → COMPLETED
-Standard success path once AppRec is OK or partially OK.
+#### NEW → REJECTED (TRANSPORT) / REJECTED (APPREC)
 
-#### PENDING → REJECTED
-Negative completion scenario.
+Represents an immediate negative outcome.
+
+* Transport-level rejection → **REJECTED (TRANSPORT)**
+* Immediate AppRec rejection → **REJECTED (APPREC)**
+
+#### PENDING (TRANSPORT) → PENDING (APPREC)
+
+Transport delivery confirmed; waiting for AppRec.
+
+#### PENDING (TRANSPORT) → COMPLETED
+
+This transition is **not possible**. Completion always requires AppRec, which means the message must pass through **PENDING (APPREC)** first.
+
+#### PENDING (APPREC) → COMPLETED
+
+Standard success path once AppRec is OK or OK_ERROR_IN_MESSAGE_PART.
+
+#### PENDING (TRANSPORT) / PENDING (APPREC) → REJECTED (TRANSPORT)
+
+Transport failure after initial acknowledgment.
+
+#### PENDING (APPREC) → REJECTED (APPREC)
+
+Application-level rejection.
 
 #### COMPLETED → COMPLETED
-Idempotent.  
-The poller may observe the same resolved state multiple times.
 
-#### REJECTED → REJECTED
-Idempotent; failure terminal state.
+Idempotent. The poller may observe the same resolved state repeatedly.
 
-#### INVALID → INVALID
-Idempotent; indicates inconsistent or contradictory external state.
+#### REJECTED (TRANSPORT) → REJECTED (TRANSPORT)
+
+Terminal transport-level failure.
+
+#### REJECTED (APPREC) → REJECTED (APPREC)
+
+Terminal application-level failure.
 
 ---
 
@@ -128,13 +171,19 @@ messageStateService.recordStateChange(UpdateState(...))
 
 - A history entry is appended.
 - If entering a terminal state:
-   - `COMPLETED → publish AppRec` (`OK` / `OK_ERROR_IN_MESSAGE_PART`)
-   - `REJECTED → publish AppRec`(`REJECTED`)
+
+- The service **publishes a final delivery outcome back into the domain once resolution is reached**.
+
+- This outcome may be either:
+
+    * an **application-level receipt (AppRec)**, or
+    * a **transport-level terminal error**.
+
 If the state is `INVALID`, no writes or publications occur.
 
 ## 3. Persistence Model
 
-The persistence layer provides a durable and transparent view of message lifecycle state.  
+The persistence layer provides a durable and transparent view of message lifecycle state.
 It consists of a **rich domain model** stored in two tables: a *current state table* and a *state history table*.
 
 ### Current Message State
@@ -159,7 +208,7 @@ This enables the system to determine:
 
 ### State History
 
-Every time a message changes state, a **state history entry** is appended.  
+Every time a message changes state, a **state history entry** is appended.
 History entries store:
 
 - old delivery state (raw external)
