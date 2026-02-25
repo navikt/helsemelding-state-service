@@ -183,29 +183,13 @@ class TransactionalMessageStateService(
     override suspend fun countByTransportState(): Map<TransportStatus, Long> {
         val messagesCountByExternalDeliveryState = messageRepository.countByExternalDeliveryState()
 
-        val messagesCountByTransportState = messagesCountByExternalDeliveryState.mapKeys {
+        return messagesCountByExternalDeliveryState.mapKeys {
             TransportStatusTranslator().translate(it.key)
-        }.toMutableMap()
-
-        TransportStatus.entries.forEach { transportStatus ->
-            if (!messagesCountByTransportState.containsKey(transportStatus)) {
-                messagesCountByTransportState[transportStatus] = 0L
-            }
         }
-
-        return messagesCountByTransportState
     }
 
     override suspend fun countByAppRecState(): Map<AppRecStatus?, Long> {
-        val messagesCountByAppRecState = messageRepository.countByAppRecState().toMutableMap()
-
-        AppRecStatus.entries.forEach { appRecStatus ->
-            if (!messagesCountByAppRecState.containsKey(appRecStatus)) {
-                messagesCountByAppRecState[appRecStatus] = 0L
-            }
-        }
-
-        return messagesCountByAppRecState
+        return messageRepository.countByAppRecState()
     }
 }
 

@@ -280,11 +280,8 @@ class MessageStateServiceSpec : StringSpec(
             // input data setup is in the FakeMessageRepository
             val result = messageStateService.countByTransportState()
 
-            result[TransportStatus.NEW] shouldBe 0
             result[TransportStatus.ACKNOWLEDGED] shouldBe 123
             result[TransportStatus.PENDING] shouldBe 234
-            result[TransportStatus.REJECTED] shouldBe 0
-            result[TransportStatus.INVALID] shouldBe 0
         }
     }
 )
