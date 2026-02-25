@@ -88,6 +88,8 @@ interface MessageRepository {
     suspend fun markPolled(externalRefIds: List<Uuid>): Int
 
     suspend fun countByExternalDeliveryState(): Map<ExternalDeliveryState?, Long>
+
+    suspend fun countByAppRecState(): Map<AppRecStatus?, Long>
 }
 
 class ExposedMessageRepository(private val database: Database) : MessageRepository {
@@ -163,6 +165,17 @@ class ExposedMessageRepository(private val database: Database) : MessageReposito
             .groupBy(externalDeliveryState)
             .associate { row ->
                 val state = row[externalDeliveryState]
+                val count = row[Messages.id.count()]
+                state to count
+            }
+    }
+
+    override suspend fun countByAppRecState(): Map<AppRecStatus?, Long> = suspendTransaction(database) {
+        Messages
+            .select(appRecStatus, Messages.id.count())
+            .groupBy(appRecStatus)
+            .associate { row ->
+                val state = row[appRecStatus]
                 val count = row[Messages.id.count()]
                 state to count
             }
@@ -262,5 +275,11 @@ class FakeMessageRepository : MessageRepository {
         mapOf(
             ACKNOWLEDGED to 123,
             UNCONFIRMED to 234
+        )
+
+    override suspend fun countByAppRecState(): Map<AppRecStatus?, Long> =
+        mapOf(
+            AppRecStatus.OK to 123,
+            AppRecStatus.REJECTED to 234
         )
 }

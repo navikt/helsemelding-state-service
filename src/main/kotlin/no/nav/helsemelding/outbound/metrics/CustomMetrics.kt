@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
+import no.nav.helsemelding.outbound.model.AppRecStatus
 import no.nav.helsemelding.outbound.model.TransportStatus
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
@@ -18,17 +19,28 @@ interface Metrics {
     fun registerMessageSigningDuration(durationNanos: Long)
     fun registerOutgoingMessageProcessingDuration(durationNanos: Long)
     fun registerTransportStateDistribution(counts: Map<TransportStatus, Long>)
+    fun registerAppRecStateDistribution(counts: Map<AppRecStatus?, Long>)
 }
 
 class CustomMetrics(val registry: MeterRegistry) : Metrics {
     private val transportStateValues: Map<TransportStatus, AtomicLong> =
         TransportStatus.entries.associateWith { AtomicLong(0) }
 
+    private val appRecStateValues: Map<AppRecStatus?, AtomicLong> = prepareAppRecStateValues()
+
     init {
         transportStateValues.forEach { (state, atomic) ->
             Gauge.builder("helsemelding_transport_state_distribution") { atomic.get().toDouble() }
                 .description("Current number of messages in each transport state")
                 .tag("state", state.name)
+                .register(registry)
+        }
+
+        appRecStateValues.forEach { (state, atomic) ->
+            val stateTag = state?.name ?: "null"
+            Gauge.builder("helsemelding_app_rec_state_distribution") { atomic.get().toDouble() }
+                .description("Current number of messages in each application recept state")
+                .tag("state", stateTag)
                 .register(registry)
         }
     }
@@ -78,6 +90,25 @@ class CustomMetrics(val registry: MeterRegistry) : Metrics {
             transportStateValues.getValue(state).set(counts[state] ?: 0L)
         }
     }
+
+    override fun registerAppRecStateDistribution(counts: Map<AppRecStatus?, Long>) {
+        log.debug { "Registering application recept state distribution" }
+        appRecStateValues.forEach { appRecState ->
+            appRecState.value.set(counts[appRecState.key] ?: 0L)
+        }
+    }
+
+    private fun prepareAppRecStateValues(): Map<AppRecStatus?, AtomicLong> {
+        val gauges = mutableMapOf<AppRecStatus?, AtomicLong>(
+            null to AtomicLong(0)
+        )
+
+        AppRecStatus.entries.forEach { state ->
+            gauges[state] = AtomicLong(0)
+        }
+
+        return gauges
+    }
 }
 
 class FakeMetrics() : Metrics {
@@ -104,6 +135,12 @@ class FakeMetrics() : Metrics {
     override fun registerTransportStateDistribution(counts: Map<TransportStatus, Long>) {
         counts.forEach { (state, count) ->
             log.info { "helsemelding_state_distribution metric is updated for state: ${state.name} with count: $count" }
+        }
+    }
+
+    override fun registerAppRecStateDistribution(counts: Map<AppRecStatus?, Long>) {
+        counts.forEach { (state, count) ->
+            log.info { "helsemelding_state_distribution metric is updated for state: ${state?.name} with count: $count" }
         }
     }
 }

@@ -66,18 +66,17 @@ fun main() = SuspendApp {
                 module = stateServiceModule(deps.meterRegistry)
             )
 
-            log.debug { "Matrics debug 1" }
             messageProcessor.processMessages(scope)
-            log.debug { "Matrics debug 2" }
+
             scope.launch { schedulePoller(poller) }
-            log.debug { "Matrics debug 3" }
+
             scope.launch {
-                scheduleStateDistributionMetricRefresh(
+                scheduleMetricsRefreshing(
                     messageStateService(deps.database),
                     metrics
                 )
             }
-            log.debug { "Matrics debug 4" }
+
             awaitCancellation()
         }
     }
@@ -99,16 +98,23 @@ private suspend fun schedulePoller(pollerService: PollerService): Long {
         .repeat { pollerService.pollMessages() }
 }
 
-private suspend fun scheduleStateDistributionMetricRefresh(
+private suspend fun scheduleMetricsRefreshing(
     messageStateService: MessageStateService,
     metrics: Metrics
 ): Long {
     return Schedule
         .spaced<Unit>(config().metrics.metricsUpdatingInterval)
         .repeat {
-            val counts = messageStateService.countByTransportState()
-            metrics.registerTransportStateDistribution(counts)
+            refreshMetrics(messageStateService, metrics)
         }
+}
+
+private suspend fun refreshMetrics(messageStateService: MessageStateService, metrics: Metrics) {
+    val transportStateCounts = messageStateService.countByTransportState()
+    metrics.registerTransportStateDistribution(transportStateCounts)
+
+    val appRecStateCounts = messageStateService.countByAppRecState()
+    metrics.registerAppRecStateDistribution(appRecStateCounts)
 }
 
 private fun logError(t: Throwable) = log.error { "Shutdown state-service due to: ${t.stackTraceToString()}" }
