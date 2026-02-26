@@ -175,7 +175,7 @@ interface MessageStateService {
      *
      * @return a map of resolved message delivery states to their respective message counts.
      */
-    suspend fun countMessageDeliveryState(): Map<MessageDeliveryState, Long>
+    suspend fun countByMessageDeliveryState(): Map<MessageDeliveryState, Long>
 }
 
 class TransactionalMessageStateService(
@@ -211,7 +211,7 @@ class TransactionalMessageStateService(
         return messageRepository.countByAppRecState()
     }
 
-    override suspend fun countMessageDeliveryState(): Map<MessageDeliveryState, Long> {
+    override suspend fun countByMessageDeliveryState(): Map<MessageDeliveryState, Long> {
         val counts = messageRepository.countByExternalDeliveryStateAndAppRecStatus()
         return counts.mapKeys {
             val transportStatus = TransportStatusTranslator().translate(it.key.first)
@@ -261,7 +261,7 @@ class FakeTransactionalMessageStateService : MessageStateService {
             REJECTED to 234
         )
 
-    override suspend fun countMessageDeliveryState(): Map<MessageDeliveryState, Long> =
+    override suspend fun countByMessageDeliveryState(): Map<MessageDeliveryState, Long> =
         mapOf(
             MessageDeliveryState.COMPLETED to 123,
             MessageDeliveryState.REJECTED to 234

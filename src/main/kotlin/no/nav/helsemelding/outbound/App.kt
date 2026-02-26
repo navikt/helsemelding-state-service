@@ -116,7 +116,7 @@ private suspend fun refreshMetrics(messageStateService: MessageStateService, met
     val appRecStateCounts = messageStateService.countByAppRecState()
     metrics.registerAppRecStateDistribution(appRecStateCounts)
 
-    val deliveryStateCounts = messageStateService.countMessageDeliveryState()
+    val deliveryStateCounts = messageStateService.countByMessageDeliveryState()
     metrics.registerMessageDeliveryStateDistribution(deliveryStateCounts)
 }
 

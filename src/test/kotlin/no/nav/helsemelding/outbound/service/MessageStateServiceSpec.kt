@@ -11,6 +11,7 @@ import no.nav.helsemelding.outbound.model.CreateState
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.ACKNOWLEDGED
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.REJECTED
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.UNCONFIRMED
+import no.nav.helsemelding.outbound.model.MessageDeliveryState
 import no.nav.helsemelding.outbound.model.MessageType.DIALOG
 import no.nav.helsemelding.outbound.model.TransportStatus
 import no.nav.helsemelding.outbound.model.UpdateState
@@ -292,6 +293,15 @@ class MessageStateServiceSpec : StringSpec(
 
             result[AppRecStatus.OK] shouldBe 123
             result[AppRecStatus.REJECTED] shouldBe 234
+        }
+
+        "countByMessageDeliveryState should return correct counts for each MessageDeliveryState" {
+
+            // input data setup is in the FakeMessageRepository
+            val result = messageStateService.countByMessageDeliveryState()
+
+            result[MessageDeliveryState.COMPLETED] shouldBe 123
+            result[MessageDeliveryState.REJECTED] shouldBe 234
         }
     }
 )
