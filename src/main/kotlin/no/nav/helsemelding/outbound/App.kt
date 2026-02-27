@@ -28,9 +28,11 @@ import no.nav.helsemelding.outbound.repository.ExposedMessageRepository
 import no.nav.helsemelding.outbound.repository.ExposedMessageStateHistoryRepository
 import no.nav.helsemelding.outbound.repository.ExposedMessageStateTransactionRepository
 import no.nav.helsemelding.outbound.service.MessageStateService
+import no.nav.helsemelding.outbound.service.MetricsService
 import no.nav.helsemelding.outbound.service.PollerService
 import no.nav.helsemelding.outbound.service.StateEvaluatorService
 import no.nav.helsemelding.outbound.service.TransactionalMessageStateService
+import no.nav.helsemelding.outbound.service.TransactionalMetricsService
 import no.nav.helsemelding.outbound.util.coroutineScope
 import org.jetbrains.exposed.v1.jdbc.Database
 
@@ -72,7 +74,7 @@ fun main() = SuspendApp {
 
             scope.launch {
                 scheduleMetricsRefreshing(
-                    messageStateService(deps.database),
+                    metricsService(deps.database),
                     metrics
                 )
             }
@@ -99,24 +101,24 @@ private suspend fun schedulePoller(pollerService: PollerService): Long {
 }
 
 private suspend fun scheduleMetricsRefreshing(
-    messageStateService: MessageStateService,
+    metricsService: MetricsService,
     metrics: Metrics
 ): Long {
     return Schedule
         .spaced<Unit>(config().metrics.metricsUpdatingInterval)
         .repeat {
-            refreshMetrics(messageStateService, metrics)
+            refreshMetrics(metricsService, metrics)
         }
 }
 
-private suspend fun refreshMetrics(messageStateService: MessageStateService, metrics: Metrics) {
-    val transportStateCounts = messageStateService.countByTransportState()
+private suspend fun refreshMetrics(metricsService: MetricsService, metrics: Metrics) {
+    val transportStateCounts = metricsService.countByTransportState()
     metrics.registerTransportStateDistribution(transportStateCounts)
 
-    val appRecStateCounts = messageStateService.countByAppRecState()
+    val appRecStateCounts = metricsService.countByAppRecState()
     metrics.registerAppRecStateDistribution(appRecStateCounts)
 
-    val deliveryStateCounts = messageStateService.countByMessageDeliveryState()
+    val deliveryStateCounts = metricsService.countByMessageDeliveryState()
     metrics.registerMessageDeliveryStateDistribution(deliveryStateCounts)
 }
 
@@ -146,6 +148,11 @@ private fun messageStateService(database: Database): MessageStateService {
         messageStateHistoryRepository,
         messageStateTransactionRepository
     )
+}
+
+private fun metricsService(database: Database): MetricsService {
+    val messageRepository = ExposedMessageRepository(database)
+    return TransactionalMetricsService(messageRepository)
 }
 
 private fun messageReceiver(

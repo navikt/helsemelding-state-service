@@ -5,15 +5,12 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.helsemelding.outbound.model.AppRecStatus
 import no.nav.helsemelding.outbound.model.AppRecStatus.OK
 import no.nav.helsemelding.outbound.model.CreateState
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.ACKNOWLEDGED
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.REJECTED
 import no.nav.helsemelding.outbound.model.ExternalDeliveryState.UNCONFIRMED
-import no.nav.helsemelding.outbound.model.MessageDeliveryState
 import no.nav.helsemelding.outbound.model.MessageType.DIALOG
-import no.nav.helsemelding.outbound.model.TransportStatus
 import no.nav.helsemelding.outbound.model.UpdateState
 import no.nav.helsemelding.outbound.repository.FakeMessageRepository
 import no.nav.helsemelding.outbound.repository.FakeMessageStateHistoryRepository
@@ -275,33 +272,6 @@ class MessageStateServiceSpec : StringSpec(
 
             messageStateService.getMessageSnapshot(externalRefId1)!!.messageState.lastPolledAt shouldNotBe null
             messageStateService.getMessageSnapshot(externalRefId2)!!.messageState.lastPolledAt shouldBe null
-        }
-
-        "countByTransportState should return correct counts for each TransportStatus" {
-
-            // input data setup is in the FakeMessageRepository
-            val result = messageStateService.countByTransportState()
-
-            result[TransportStatus.ACKNOWLEDGED] shouldBe 123
-            result[TransportStatus.PENDING] shouldBe 234
-        }
-
-        "countByAppRecState should return correct counts for each AppRecStatus" {
-
-            // input data setup is in the FakeMessageRepository
-            val result = messageStateService.countByAppRecState()
-
-            result[AppRecStatus.OK] shouldBe 123
-            result[AppRecStatus.REJECTED] shouldBe 234
-        }
-
-        "countByMessageDeliveryState should return correct counts for each MessageDeliveryState" {
-
-            // input data setup is in the FakeMessageRepository
-            val result = messageStateService.countByMessageDeliveryState()
-
-            result[MessageDeliveryState.COMPLETED] shouldBe 123
-            result[MessageDeliveryState.REJECTED] shouldBe 234
         }
     }
 )
